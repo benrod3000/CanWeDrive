@@ -30,24 +30,24 @@ export async function GET() {
 
     const healthResponse = NextResponse.json({
       ok: rows.length > 0,
-      service: "CanWeDrive",
+      service: "Can We Cart",
       supabase: "connected",
       roadNetwork: rows.length > 0 ? "loaded" : "empty",
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
       latencyMs: Date.now() - startedAt,
     });
     healthResponse.headers.set(
-      "x-canwedrive-version",
+      "x-can-we-cart-version",
       process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
     );
     return healthResponse;
   } catch (error) {
-    console.error("CanWeDrive health check failed", error);
+    console.error("Can We Cart health check failed", error);
 
     return NextResponse.json(
       {
         ok: false,
-        service: "CanWeDrive",
+        service: "Can We Cart",
         supabase: "unavailable",
         version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
         latencyMs: Date.now() - startedAt,
