@@ -25,12 +25,12 @@ This is a data-based research tool, not a substitute for checking posted signs, 
 - OpenFreeMap basemap
 - OSRM routing
 - OpenStreetMap + Overpass speed data
-- Supabase/PostGIS road-data store for the next network-data phase
+- Supabase/PostGIS + pgRouting road graph for LSV routing
 - Vercel-compatible Node runtime
 
 ## Road-data model
 
-Supabase contains the source-of-truth tables for road segments, independent speed verifications, and vehicle profiles. The production routing network will use those records rather than treating missing OSM tags as permission.
+Supabase contains the source-of-truth tables for road segments, independent speed verifications, and vehicle profiles. The production routing network is being moved onto directed road nodes/edges in Supabase, with pgRouting enforcing the LSV graph constraints. Missing speed data remains unknown rather than being treated as permission.
 
 ## Development
 
