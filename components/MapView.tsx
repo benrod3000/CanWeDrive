@@ -20,6 +20,10 @@ type RouteData = {
 
 type MapViewProps = {
   route: RouteData | null;
+  selectedFrom: Coordinate;
+  selectedTo: Coordinate;
+  pickMode: "from" | "to";
+  onMapPick: (coordinates: Coordinate) => void;
 };
 
 const ROUTE_COLORS = {
@@ -28,9 +32,20 @@ const ROUTE_COLORS = {
   blocked: "#111111",
 };
 
-export default function MapView({ route }: MapViewProps) {
+export default function MapView({
+  route,
+  selectedFrom,
+  selectedTo,
+  pickMode,
+  onMapPick,
+}: MapViewProps) {
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const onMapPickRef = useRef(onMapPick);
+
+  useEffect(() => {
+    onMapPickRef.current = onMapPick;
+  }, [onMapPick]);
 
   useEffect(() => {
     if (!mapNode.current) return;
@@ -44,6 +59,10 @@ export default function MapView({ route }: MapViewProps) {
 
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
+
+    map.on("click", (event) => {
+      onMapPickRef.current([event.lngLat.lng, event.lngLat.lat]);
+    });
 
     map.on("load", () => {
       map.addSource("route", {
@@ -104,14 +123,14 @@ export default function MapView({ route }: MapViewProps) {
         type: "circle",
         source: "route-points",
         paint: {
-          "circle-radius": 6,
+          "circle-radius": 7,
           "circle-color": "#ffffff",
           "circle-stroke-color": "#111111",
           "circle-stroke-width": 3,
         },
       });
 
-      updateRouteLayers(map, route);
+      updateRouteLayers(map, route, selectedFrom, selectedTo);
     });
 
     return () => {
@@ -123,8 +142,14 @@ export default function MapView({ route }: MapViewProps) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    updateRouteLayers(map, route);
-  }, [route]);
+    updateRouteLayers(map, route, selectedFrom, selectedTo);
+  }, [route, selectedFrom, selectedTo]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.getCanvas().style.cursor = "crosshair";
+  }, [pickMode]);
 
   return <div ref={mapNode} className="map" aria-label="CanWeDrive route map" />;
 }
@@ -132,6 +157,8 @@ export default function MapView({ route }: MapViewProps) {
 function updateRouteLayers(
   map: maplibregl.Map,
   route: RouteData | null,
+  selectedFrom: Coordinate,
+  selectedTo: Coordinate,
 ) {
   const routeSource = map.getSource("route") as maplibregl.GeoJSONSource | undefined;
   const pointSource = map.getSource("route-points") as maplibregl.GeoJSONSource | undefined;
@@ -140,41 +167,40 @@ function updateRouteLayers(
 
   routeSource.setData({
     type: "FeatureCollection",
-    features: route?.segments.map((segment, index) => ({
-      type: "Feature",
-      properties: {
-        status: segment.status,
-        index,
-      },
-      geometry: {
-        type: "LineString",
-        coordinates: segment.coordinates,
-      },
-    })) ?? [],
+    features:
+      route?.segments.map((segment, index) => ({
+        type: "Feature",
+        properties: {
+          status: segment.status,
+          index,
+        },
+        geometry: {
+          type: "LineString",
+          coordinates: segment.coordinates,
+        },
+      })) ?? [],
   });
 
   pointSource.setData({
     type: "FeatureCollection",
-    features: route
-      ? [
-          {
-            type: "Feature",
-            properties: { role: "from" },
-            geometry: {
-              type: "Point",
-              coordinates: route.from.coordinates,
-            },
-          },
-          {
-            type: "Feature",
-            properties: { role: "to" },
-            geometry: {
-              type: "Point",
-              coordinates: route.to.coordinates,
-            },
-          },
-        ]
-      : [],
+    features: [
+      {
+        type: "Feature",
+        properties: { role: "from" },
+        geometry: {
+          type: "Point",
+          coordinates: selectedFrom,
+        },
+      },
+      {
+        type: "Feature",
+        properties: { role: "to" },
+        geometry: {
+          type: "Point",
+          coordinates: selectedTo,
+        },
+      },
+    ],
   });
 
   if (!route) return;
