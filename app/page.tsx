@@ -412,8 +412,8 @@ export default function Home() {
               <div className="section-label">SPEED EXPOSURE</div>
               <div className="speed-bars">
                 <div><span>≤25 MPH</span><strong>{speedBuckets?.under25.toFixed(1) ?? "—"} MI</strong></div>
-                <div><span>30 MPH</span><strong>{speedBuckets?.at30.toFixed(1) ?? "—"} MI</strong></div>
-                <div><span>35 MPH</span><strong>{speedBuckets?.at35.toFixed(1) ?? "—"} MI</strong></div>
+                <div><span>26–30 MPH</span><strong>{speedBuckets?.at30.toFixed(1) ?? "—"} MI</strong></div>
+                <div><span>31–35 MPH</span><strong>{speedBuckets?.at35.toFixed(1) ?? "—"} MI</strong></div>
                 <div><span>UNKNOWN</span><strong>{speedBuckets?.unknown.toFixed(1) ?? "—"} MI</strong></div>
               </div>
               <div className="verification-line">
@@ -434,7 +434,7 @@ export default function Home() {
                 {speedBuckets && speedBuckets.at35 > 0 && (
                   <div>
                     <strong>35 MPH ROAD</strong>
-                    <span>{speedBuckets.at35.toFixed(1)} miles are mapped at the maximum LSV speed.</span>
+                    <span>{speedBuckets.at35.toFixed(1)} miles are mapped between 31 and 35 MPH.</span>
                   </div>
                 )}
                 {route.unknownMiles > 0 && (
