@@ -99,6 +99,70 @@ function waySpeedMph(tags: Record<string, string> = {}) {
   return Math.max(...values);
 }
 
+async function fetchStoredSpeedWays(
+  routeGeometry: { type: "LineString"; coordinates: Coordinate[] },
+): Promise<OverpassWay[]> {
+  const supabaseUrl =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) return [];
+
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/rpc/road_segments_near_route`,
+    {
+      method: "POST",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        route_geojson: routeGeometry,
+        max_distance_meters: MATCH_DISTANCE_METERS,
+      }),
+      signal: AbortSignal.timeout(5_000),
+    },
+  );
+
+  if (!response.ok) return [];
+
+  const rows = (await response.json()) as Array<{
+    id: number;
+    osm_id: number | null;
+    maxspeed_mph: number | null;
+    speed_source: string | null;
+    geom_geojson: {
+      type?: string;
+      coordinates?: Array<[number, number]>;
+    } | null;
+  }>;
+
+  return rows
+    .filter(
+      (row) =>
+        row.geom_geojson?.type === "LineString" &&
+        Array.isArray(row.geom_geojson.coordinates) &&
+        row.geom_geojson.coordinates.length > 1,
+    )
+    .map((row) => ({
+      type: "way",
+      id: row.osm_id ?? row.id,
+      tags:
+        row.maxspeed_mph === null
+          ? {}
+          : {
+              maxspeed: String(row.maxspeed_mph),
+            },
+      geometry: row.geom_geojson!.coordinates!.map(([lon, lat]) => ({
+        lon,
+        lat,
+      })),
+    }));
+}
+
 function buildGrid(ways: OverpassWay[]) {
   const cellSize = 0.0007;
   const grid = new Map<string, number[]>();
@@ -289,10 +353,22 @@ export async function GET(request: NextRequest) {
     const routeCoordinates = route.geometry.coordinates;
 
     let speedWays: OverpassWay[] = [];
+
     try {
-      speedWays = await fetchSpeedWays(routeCoordinates);
+      speedWays = await fetchStoredSpeedWays({
+        type: "LineString",
+        coordinates: routeCoordinates,
+      });
     } catch {
       speedWays = [];
+    }
+
+    if (speedWays.length === 0) {
+      try {
+        speedWays = await fetchSpeedWays(routeCoordinates);
+      } catch {
+        speedWays = [];
+      }
     }
 
     const { grid, cellSize } = buildGrid(speedWays);
