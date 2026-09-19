@@ -21,7 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           for i in {1..24}; do
-            headers="$(curl -sS -D - -o /tmp/health.json -w '\n%{http_code}' https://canwedrive.vercel.app/api/health || true)"
+            headers="$(curl -sS -D - -o /tmp/health.json -w '\n%{http_code}' https://can-we-cart.vercel.app/api/health || true)"
             code="$(printf '%s\n' "$headers" | tail -n1)"
             version="$(python -c 'import json; print(json.load(open("/tmp/health.json")).get("version", ""))' 2>/dev/null || true)"
             echo "attempt=$i http=$code version=$version"
@@ -39,7 +39,7 @@ jobs:
       - name: Test production route
         run: |
           set -euo pipefail
-          url='https://canwedrive.vercel.app/api/route?fromLon=-117.3506&fromLat=33.1581&toLon=-117.3420&toLat=33.2072'
+          url='https://can-we-cart.vercel.app/api/route?fromLon=-117.3506&fromLat=33.1581&toLon=-117.3420&toLat=33.2072'
           code="$(curl -sS --max-time 45 -w '%{http_code}' "$url" -o /tmp/route.json)"
           echo "route_http=$code"
           cat /tmp/route.json
