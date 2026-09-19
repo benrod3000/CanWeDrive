@@ -123,7 +123,7 @@ async function fetchGraphRoute(
   from: Coordinate,
   to: Coordinate,
 ): Promise<GraphRouteResult> {
-  // This route is intentionally pinned to the CanWeDrive Supabase project.
+  // This route is intentionally pinned to the Can We Cart Supabase project.
   // The publishable key is public by design and avoids accidentally inheriting
   // unrelated Vercel environment variables from another project.
   const supabaseUrl = "https://bsnspyjsirfayypcvpmc.supabase.co";
@@ -484,7 +484,7 @@ async function fetchSpeedWays(
     `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
     {
       headers: {
-        "User-Agent": "CanWeDrive/0.1 (open-source LSV route research tool)",
+        "User-Agent": "Can We Cart/0.1 (open-source LSV route research tool)",
       },
       signal: AbortSignal.timeout(30_000),
     },
@@ -620,15 +620,15 @@ export async function GET(request: NextRequest) {
       },
       route: graphResult,
     });
-    response.headers.set("x-canwedrive-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
-    response.headers.set("x-canwedrive-route-ms", String(Date.now() - startedAt));
+    response.headers.set("x-can-we-cart-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
+    response.headers.set("x-can-we-cart-route-ms", String(Date.now() - startedAt));
     return response;
 
     /* Ordinary car routing is intentionally not used as a fallback. */
     /*
     const osrmResponse = await fetch(osrmUrl, {
       headers: {
-        "User-Agent": "CanWeDrive/0.1 (open-source LSV route research tool)",
+        "User-Agent": "Can We Cart/0.1 (open-source LSV route research tool)",
       },
       signal: AbortSignal.timeout(20_000),
     });
@@ -741,7 +741,7 @@ export async function GET(request: NextRequest) {
 
     */
   } catch (error) {
-    console.error("CanWeDrive route error", {
+    console.error("Can We Cart route error", {
       error: error instanceof Error ? error.message : String(error),
       from: from.coordinates,
       to: to.coordinates,
