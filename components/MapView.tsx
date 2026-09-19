@@ -11,7 +11,7 @@ type RouteData = {
     coordinates: Coordinate[];
   };
   segments: Array<{
-    coordinates: [Coordinate, Coordinate];
+    coordinates: Coordinate[];
     status: "eligible" | "blocked" | "unknown";
   }>;
   from: { coordinates: Coordinate };
