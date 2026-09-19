@@ -10,7 +10,7 @@ export async function GET() {
   const startedAt = Date.now();
 
   try {
-    const response = await fetch(
+    const supabaseResponse = await fetch(
       `${SUPABASE_URL}/rest/v1/road_edges?select=id&limit=1`,
       {
         headers: {
@@ -22,13 +22,13 @@ export async function GET() {
       },
     );
 
-    if (!response.ok) {
-      throw new Error(`Supabase returned HTTP ${response.status}`);
+    if (!supabaseResponse.ok) {
+      throw new Error(`Supabase returned HTTP ${supabaseResponse.status}`);
     }
 
-    const rows = (await response.json()) as Array<{ id: number }>;
+    const rows = (await supabaseResponse.json()) as Array<{ id: number }>;
 
-    const response = NextResponse.json({
+    const healthResponse = NextResponse.json({
       ok: rows.length > 0,
       service: "CanWeDrive",
       supabase: "connected",
@@ -36,8 +36,11 @@ export async function GET() {
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
       latencyMs: Date.now() - startedAt,
     });
-    response.headers.set("x-canwedrive-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
-    return response;
+    healthResponse.headers.set(
+      "x-canwedrive-version",
+      process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
+    );
+    return healthResponse;
   } catch (error) {
     console.error("CanWeDrive health check failed", error);
 
