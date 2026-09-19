@@ -100,8 +100,8 @@ export default function MapView({
         source: "route",
         paint: {
           "line-color": "#111111",
-          "line-width": 10,
-          "line-opacity": 0.22,
+          "line-width": 11,
+          "line-opacity": 0.55,
         },
       });
 
@@ -112,7 +112,7 @@ export default function MapView({
         filter: ["==", ["get", "status"], "eligible"],
         paint: {
           "line-color": ROUTE_COLORS.eligible,
-          "line-width": 6,
+          "line-width": 6.5,
           "line-opacity": 0.98,
         },
       });
@@ -147,7 +147,7 @@ export default function MapView({
         type: "circle",
         source: "route-points",
         paint: {
-          "circle-radius": 8,
+          "circle-radius": 9,
           "circle-color": "#ffffff",
           "circle-stroke-color": "#111111",
           "circle-stroke-width": 3,
