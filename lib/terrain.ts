@@ -119,6 +119,7 @@ export async function getRouteTerrain(
     let maxDownhillGrade = 0;
     let cumulativeDistanceMeters = 0;
     let climbStartMeters: number | null = null;
+    let currentClimbMeters = 0;
     let longestClimbMeters = 0;
     const profile: TerrainProfilePoint[] = [
       {
@@ -146,12 +147,11 @@ export async function getRouteTerrain(
 
       if (elevationDelta >= NOISE_THRESHOLD_METERS) {
         if (climbStartMeters === null) climbStartMeters = cumulativeDistanceMeters - horizontalMeters;
+        currentClimbMeters += horizontalMeters;
       } else if (climbStartMeters !== null) {
-        longestClimbMeters = Math.max(
-          longestClimbMeters,
-          cumulativeDistanceMeters - climbStartMeters - horizontalMeters,
-        );
+        longestClimbMeters = Math.max(longestClimbMeters, currentClimbMeters);
         climbStartMeters = null;
+        currentClimbMeters = 0;
       }
 
       profile.push({
@@ -161,10 +161,7 @@ export async function getRouteTerrain(
     }
 
     if (climbStartMeters !== null) {
-      longestClimbMeters = Math.max(
-        longestClimbMeters,
-        cumulativeDistanceMeters - climbStartMeters,
-      );
+      longestClimbMeters = Math.max(longestClimbMeters, currentClimbMeters);
     }
 
     return {
