@@ -99,6 +99,153 @@ function waySpeedMph(tags: Record<string, string> = {}) {
   return Math.max(...values);
 }
 
+type GraphRouteRow = {
+  path_seq: number;
+  edge_id: number;
+  edge_name: string | null;
+  edge_status: "verified_eligible" | "restricted" | "unknown" | "verified_blocked";
+  maxspeed_mph: number | null;
+  length_m: number;
+  geom_geojson: {
+    type?: string;
+    coordinates?: Coordinate[];
+  } | null;
+};
+
+type GraphRouteResult = {
+  rows: GraphRouteRow[];
+  networkAvailable: boolean;
+};
+
+async function fetchGraphRoute(
+  from: Coordinate,
+  to: Coordinate,
+): Promise<GraphRouteResult> {
+  const supabaseUrl =
+    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return { rows: [], networkAvailable: false };
+  }
+
+  const headers = {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+  };
+
+  const networkResponse = await fetch(
+    `${supabaseUrl}/rest/v1/road_edges?select=id&limit=1`,
+    {
+      headers,
+      signal: AbortSignal.timeout(5_000),
+    },
+  );
+
+  if (!networkResponse.ok) {
+    return { rows: [], networkAvailable: false };
+  }
+
+  const networkRows = (await networkResponse.json()) as Array<{ id: number }>;
+  if (!networkRows.length) {
+    return { rows: [], networkAvailable: false };
+  }
+
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/rpc/route_lsv_candidate`,
+    {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        start_lon: from[0],
+        start_lat: from[1],
+        end_lon: to[0],
+        end_lat: to[1],
+        allow_unknown: true,
+        snap_max_distance_meters: 500,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Graph routing returned ${response.status}`);
+  }
+
+  const rows = (await response.json()) as GraphRouteRow[];
+  return { rows, networkAvailable: true };
+}
+
+function buildGraphRouteResult(rows: GraphRouteRow[]) {
+  const routeCoordinates: Coordinate[] = [];
+  const segments: RouteSegment[] = [];
+  let distanceMeters = 0;
+  let unknownMiles = 0;
+
+  for (const row of rows) {
+    const coordinates = row.geom_geojson?.coordinates ?? [];
+    if (coordinates.length < 2) continue;
+
+    distanceMeters += row.length_m;
+
+    for (const coordinate of coordinates) {
+      const previous = routeCoordinates[routeCoordinates.length - 1];
+      if (
+        !previous ||
+        previous[0] !== coordinate[0] ||
+        previous[1] !== coordinate[1]
+      ) {
+        routeCoordinates.push(coordinate);
+      }
+    }
+
+    const start = coordinates[0];
+    const end = coordinates[coordinates.length - 1];
+    const status =
+      row.edge_status === "verified_eligible" ? "eligible" : "unknown";
+
+    if (status === "unknown") {
+      unknownMiles += row.length_m / 1609.344;
+    }
+
+    segments.push({
+      coordinates: [start, end],
+      status,
+      speedMph:
+        row.maxspeed_mph === null
+          ? null
+          : Math.round(row.maxspeed_mph * 10) / 10,
+      source: row.maxspeed_mph === null ? null : "OpenStreetMap",
+    });
+  }
+
+  if (routeCoordinates.length < 2) return null;
+
+  const distanceMiles = distanceMeters / 1609.344;
+  return {
+    status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
+    blockedMiles: 0,
+    unknownMiles,
+    alternativesConsidered: 1,
+    routerConstraints: {
+      excludedClasses: ["motorway", "motorway_link", "motorroad"],
+    },
+    distanceMiles: Math.round(distanceMiles * 10) / 10,
+    durationMinutes: null,
+    geometry: {
+      type: "LineString" as const,
+      coordinates: routeCoordinates,
+    },
+    segments,
+    speedDataAvailable: unknownMiles === 0,
+  };
+}
+
 async function fetchStoredSpeedWays(
   routeGeometry: { type: "LineString"; coordinates: Coordinate[] },
 ): Promise<OverpassWay[]> {
@@ -385,6 +532,46 @@ export async function GET(request: NextRequest) {
     `&exclude=${ROUTER_EXCLUDE_CLASSES}`;
 
   try {
+    let graphRoute: GraphRouteResult;
+
+    try {
+      graphRoute = await fetchGraphRoute(from.coordinates, to.coordinates);
+    } catch {
+      graphRoute = { rows: [], networkAvailable: false };
+    }
+
+    if (graphRoute.networkAvailable) {
+      const graphResult = buildGraphRouteResult(graphRoute.rows);
+
+      if (!graphResult) {
+        return NextResponse.json(
+          {
+            error:
+              "No LSV route was found under the current road-network rules.",
+          },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({
+        vehicle: {
+          id: "golf_cart_lsv",
+          maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
+        },
+        from: {
+          id: from.id,
+          name: from.name,
+          coordinates: from.coordinates,
+        },
+        to: {
+          id: to.id,
+          name: to.name,
+          coordinates: to.coordinates,
+        },
+        route: graphResult,
+      });
+    }
+
     const osrmResponse = await fetch(osrmUrl, {
       headers: {
         "User-Agent": "CanWeDrive/0.1 (open-source LSV route research tool)",
