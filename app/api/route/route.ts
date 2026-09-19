@@ -728,8 +728,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error:
-          "Routing is temporarily unavailable. Try again in a moment.",
+        error: "Routing is temporarily unavailable. Try again in a moment.",
+        detail: error instanceof Error ? error.message : String(error),
       },
       { status: 502 },
     );
