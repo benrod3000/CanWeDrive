@@ -302,7 +302,7 @@ export default function Home() {
         </footer>
       </aside>
 
-      <section className="map-wrap">
+      <section className={route ? "map-wrap has-route" : "map-wrap"}>
         <MapView
           route={
             route
