@@ -159,6 +159,12 @@ export default function Home() {
                 <strong>NO</strong>
                 FREEWAYS
               </span>
+              {route.unknownMiles > 0 && (
+                <span>
+                  <strong>{route.unknownMiles} MI</strong>
+                  UNKNOWN
+                </span>
+              )}
             </div>
             <p>
               {searchedFrom} → {searchedTo}
@@ -176,7 +182,7 @@ export default function Home() {
 
         <footer>
           <span>CanWeDrive v0.2</span>
-          <span>OSM + OSRM + Overpass</span>
+          <span>OSM + POSTGIS + PGROUTING</span>
         </footer>
       </aside>
 
