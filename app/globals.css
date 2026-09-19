@@ -376,3 +376,9 @@ footer {
 .result-endpoints div { display: grid; gap: 3px; }
 .result-endpoints span { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .result-endpoints strong { font-size: 13px; line-height: 1.35; font-weight: 600; }
+
+
+.map-tools { position: absolute; right: 12px; top: 58px; z-index: 3; }
+.map-tools button { border: 2px solid var(--ink); background: var(--white); color: var(--ink); padding: 9px 11px; font-size: 10px; font-weight: 900; letter-spacing: .06em; box-shadow: 3px 3px 0 rgba(17,17,17,.35); cursor: pointer; }
+.map-tools button:hover:not(:disabled) { background: var(--yellow); transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(17,17,17,.35); }
+.map-tools button:disabled { opacity: .45; cursor: not-allowed; }
