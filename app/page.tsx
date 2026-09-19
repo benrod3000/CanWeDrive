@@ -25,18 +25,18 @@ type RouteResult = {
 
 const STATUS_COPY = {
   eligible: {
-    label: "WITHIN 35 MPH DATA",
-    title: "The mapped route stays at 35 MPH or less.",
+    label: "LSV-FRIENDLY DATA",
+    title: "No freeways. Mapped route speeds stay at 35 MPH or less.",
     tone: "eligible",
   },
   unknown: {
     label: "NOT FULLY VERIFIED",
-    title: "Part of this route has no usable posted-speed data.",
+    title: "No freeways. Some streets have no usable posted-speed data.",
     tone: "unknown",
   },
   blocked: {
     label: "OVER 35 MPH",
-    title: "This route includes a road mapped above 35 MPH.",
+    title: "No freeways, but this route still includes a road mapped above 35 MPH.",
     tone: "blocked",
   },
 } as const;
@@ -156,8 +156,8 @@ export default function Home() {
                 ROUTE
               </span>
               <span>
-                <strong>{route.durationMinutes} MIN</strong>
-                EST. TIME
+                <strong>NO</strong>
+                FREEWAYS
               </span>
             </div>
             <p>
@@ -168,7 +168,7 @@ export default function Home() {
               <span>
                 Freeways are excluded from route planning. Speed data comes from
                 OpenStreetMap tags. Posted signs and local restrictions can
-                override the map.
+                override the map. This is not a legal determination.
               </span>
             </div>
           </section>
