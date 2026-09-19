@@ -4,6 +4,8 @@ import { getPlace } from "@/lib/locations";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Production smoke test trigger: route diagnostics are intentionally enabled while routing is being stabilized.
+
 const LSV_MAX_SPEED_MPH = 35;
 const MATCH_DISTANCE_METERS = 35;
 const ROUTER_EXCLUDE_CLASSES = "motorway";
