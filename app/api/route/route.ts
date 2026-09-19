@@ -4,7 +4,6 @@ import { getPlace } from "@/lib/locations";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Production smoke test trigger: route diagnostics are intentionally enabled while routing is being stabilized.
 
 const LSV_MAX_SPEED_MPH = 35;
 const MATCH_DISTANCE_METERS = 35;
@@ -155,8 +154,7 @@ async function fetchGraphRoute(
   );
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Graph routing returned ${response.status}: ${detail.slice(0, 1000)}`);
+    throw new Error(`Graph routing returned ${response.status}`);
   }
 
   const rows = (await response.json()) as GraphRouteRow[];
@@ -732,7 +730,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Routing is temporarily unavailable. Try again in a moment.",
-        detail: error instanceof Error ? error.message : String(error),
       },
       { status: 502 },
     );
