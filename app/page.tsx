@@ -4,6 +4,13 @@ import { useState } from "react";
 import MapView from "../components/MapView";
 import { PLACES, type PlaceId } from "../lib/locations";
 
+type Coordinate = [number, number];
+
+type SelectedPoint = {
+  coordinates: Coordinate;
+  name: string;
+};
+
 type RouteResult = {
   route: {
     status: "eligible" | "blocked" | "unknown";
@@ -12,16 +19,16 @@ type RouteResult = {
     durationMinutes: number | null;
     geometry: {
       type: "LineString";
-      coordinates: [number, number][];
+      coordinates: Coordinate[];
     };
     segments: Array<{
-      coordinates: [[number, number], [number, number]];
+      coordinates: [Coordinate, Coordinate];
       status: "eligible" | "blocked" | "unknown";
     }>;
     speedDataAvailable: boolean;
   };
-  from: { name: string; coordinates: [number, number] };
-  to: { name: string; coordinates: [number, number] };
+  from: { name: string; coordinates: Coordinate };
+  to: { name: string; coordinates: Coordinate };
 };
 
 const STATUS_COPY = {
@@ -45,15 +52,54 @@ const STATUS_COPY = {
 export default function Home() {
   const [from, setFrom] = useState<PlaceId>("carlsbad-village");
   const [to, setTo] = useState<PlaceId>("encinitas");
+  const [fromPoint, setFromPoint] = useState<SelectedPoint | null>(null);
+  const [toPoint, setToPoint] = useState<SelectedPoint | null>(null);
   const [route, setRoute] = useState<RouteResult["route"] | null>(null);
   const [searchedFrom, setSearchedFrom] = useState("");
   const [searchedTo, setSearchedTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pickMode, setPickMode] = useState<"from" | "to">("from");
+
+  const activeFrom = fromPoint ?? PLACES.find((place) => place.id === from)!;
+  const activeTo = toPoint ?? PLACES.find((place) => place.id === to)!;
+
+  function selectPreset(type: "from" | "to", id: PlaceId) {
+    if (type === "from") {
+      setFrom(id);
+      setFromPoint(null);
+    } else {
+      setTo(id);
+      setToPoint(null);
+    }
+    setRoute(null);
+    setError("");
+    setPickMode(type);
+  }
+
+  function handleMapPick(coordinates: Coordinate) {
+    const point: SelectedPoint = {
+      coordinates,
+      name: coordinates[1].toFixed(5) + ", " + coordinates[0].toFixed(5),
+    };
+
+    if (pickMode === "from") {
+      setFromPoint(point);
+      setPickMode("to");
+    } else {
+      setToPoint(point);
+    }
+
+    setRoute(null);
+    setError("");
+  }
 
   async function checkRoute() {
-    if (from === to) {
-      setError("Pick two different locations.");
+    if (
+      activeFrom.coordinates[0] === activeTo.coordinates[0] &&
+      activeFrom.coordinates[1] === activeTo.coordinates[1]
+    ) {
+      setError("Pick two different points.");
       return;
     }
 
@@ -61,10 +107,16 @@ export default function Home() {
     setError("");
 
     try {
-      const response = await fetch(
-        `/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      );
+      const params = new URLSearchParams({
+        fromLon: String(activeFrom.coordinates[0]),
+        fromLat: String(activeFrom.coordinates[1]),
+        toLon: String(activeTo.coordinates[0]),
+        toLat: String(activeTo.coordinates[1]),
+        fromName: activeFrom.name,
+        toName: activeTo.name,
+      });
 
+      const response = await fetch("/api/route?" + params.toString());
       const payload = (await response.json()) as RouteResult & {
         error?: string;
       };
@@ -103,9 +155,13 @@ export default function Home() {
           <label>
             <span>FROM</span>
             <select
-              value={from}
-              onChange={(event) => setFrom(event.target.value as PlaceId)}
+              value={fromPoint ? "map-point" : from}
+              onChange={(event) => {
+                if (event.target.value === "map-point") return;
+                selectPreset("from", event.target.value as PlaceId);
+              }}
             >
+              {fromPoint && <option value="map-point">Map point</option>}
               {PLACES.map((place) => (
                 <option key={place.id} value={place.id}>
                   {place.name}
@@ -117,9 +173,13 @@ export default function Home() {
           <label>
             <span>TO</span>
             <select
-              value={to}
-              onChange={(event) => setTo(event.target.value as PlaceId)}
+              value={toPoint ? "map-point" : to}
+              onChange={(event) => {
+                if (event.target.value === "map-point") return;
+                selectPreset("to", event.target.value as PlaceId);
+              }}
             >
+              {toPoint && <option value="map-point">Map point</option>}
               {PLACES.map((place) => (
                 <option key={place.id} value={place.id}>
                   {place.name}
@@ -127,6 +187,27 @@ export default function Home() {
               ))}
             </select>
           </label>
+
+          <div className="map-pick-controls">
+            <button
+              className={pickMode === "from" ? "pick-button active" : "pick-button"}
+              onClick={() => setPickMode("from")}
+              type="button"
+            >
+              PICK FROM ON MAP
+            </button>
+            <button
+              className={pickMode === "to" ? "pick-button active" : "pick-button"}
+              onClick={() => setPickMode("to")}
+              type="button"
+            >
+              PICK TO ON MAP
+            </button>
+          </div>
+
+          <p className="map-help">
+            Click the map to place the selected point. Start with FROM, then TO.
+          </p>
 
           <button
             className="drive-button"
@@ -182,7 +263,7 @@ export default function Home() {
         )}
 
         <footer>
-          <span>CanWeDrive v0.2</span>
+          <span>CanWeDrive v0.3</span>
           <span>OSM + POSTGIS + PGROUTING</span>
         </footer>
       </aside>
@@ -194,11 +275,15 @@ export default function Home() {
               ? {
                   geometry: route.geometry,
                   segments: route.segments,
-                  from: PLACES.find((place) => place.id === from)!,
-                  to: PLACES.find((place) => place.id === to)!,
+                  from: { coordinates: activeFrom.coordinates },
+                  to: { coordinates: activeTo.coordinates },
                 }
               : null
           }
+          selectedFrom={activeFrom.coordinates}
+          selectedTo={activeTo.coordinates}
+          pickMode={pickMode}
+          onMapPick={handleMapPick}
         />
         <div className="legend">
           <span><i className="ok" /> ≤ 35 mph</span>
