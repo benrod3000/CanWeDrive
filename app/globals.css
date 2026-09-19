@@ -231,6 +231,44 @@ input:focus {
 
 .result.blocked p { color: #ddd; }
 
+.primary-trip-facts {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.trip-time,
+.trip-distance {
+  border: 3px solid var(--ink);
+  background: var(--white);
+  padding: 11px 12px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.trip-time strong {
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.03em;
+}
+
+.trip-distance strong {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+
+.trip-time span,
+.trip-distance span {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+
 .trip-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
