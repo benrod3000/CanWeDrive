@@ -1,0 +1,55 @@
+name: Production smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "next.config.ts"
+      - "package.json"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deployment
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in {1..24}; do
+            headers="$(curl -sS -D - -o /tmp/health.json -w '\n%{http_code}' https://canwedrive.vercel.app/api/health || true)"
+            code="$(printf '%s\n' "$headers" | tail -n1)"
+            version="$(printf '%s\n' "$headers" | awk 'BEGIN{IGNORECASE=1} /^x-canwedrive-version:/ {gsub("\r","",$2); print $2}')"
+            echo "attempt=$i http=$code version=$version"
+            cat /tmp/health.json || true
+            if [ "$code" = "200" ] && [ "$version" = "$EXPECTED_SHA" ]; then
+              break
+            fi
+            if [ "$i" = "24" ]; then
+              echo "Vercel did not serve expected commit $EXPECTED_SHA"
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Test production route
+        run: |
+          set -euo pipefail
+          url='https://canwedrive.vercel.app/api/route?fromLon=-117.3506&fromLat=33.1581&toLon=-117.3420&toLat=33.2072'
+          curl -fsS --max-time 45 "$url" -o /tmp/route.json
+          python - <<'PY'
+          import json
+          data = json.load(open("/tmp/route.json"))
+          route = data["route"]
+          assert route["distanceMiles"] > 0
+          assert len(route["geometry"]["coordinates"]) >= 2
+          assert len(route["segments"]) > 0
+          print("production route OK")
+          print("distance_miles:", route["distanceMiles"])
+          print("segments:", len(route["segments"]))
+          print("unknown_miles:", route["unknownMiles"])
+          PY
