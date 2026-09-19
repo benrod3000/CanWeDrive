@@ -407,6 +407,13 @@ input:focus {
   letter-spacing: -.02em;
 }
 
+.eta-note {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+ 
 .terrain-note {
   margin: 0 0 2px !important;
   color: var(--muted) !important;
