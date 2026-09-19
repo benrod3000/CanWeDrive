@@ -60,6 +60,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pickMode, setPickMode] = useState<"from" | "to">("from");
+  const [fromQuery, setFromQuery] = useState("");
+  const [toQuery, setToQuery] = useState("");
+  const [searching, setSearching] = useState<"from" | "to" | null>(null);
 
   const activeFrom = fromPoint ?? PLACES.find((place) => place.id === from)!;
   const activeTo = toPoint ?? PLACES.find((place) => place.id === to)!;
@@ -75,6 +78,38 @@ export default function Home() {
     setRoute(null);
     setError("");
     setPickMode(type);
+  }
+
+  async function searchAddress(type: "from" | "to") {
+    const query = (type === "from" ? fromQuery : toQuery).trim();
+    if (!query) return;
+    setSearching(type);
+    setError("");
+    try {
+      const response = await fetch("/api/geocode?q=" + encodeURIComponent(query));
+      const payload = (await response.json()) as {
+        results?: Array<{ name: string; coordinates: Coordinate }>;
+        error?: string;
+      };
+      if (!response.ok || !payload.results?.length) {
+        throw new Error(payload.error ?? "No matching address found.");
+      }
+      const result = payload.results[0];
+      const point = { coordinates: result.coordinates, name: result.name };
+      if (type === "from") {
+        setFromPoint(point);
+        setFromQuery(result.name);
+        setPickMode("to");
+      } else {
+        setToPoint(point);
+        setToQuery(result.name);
+      }
+      setRoute(null);
+    } catch (lookupError) {
+      setError(lookupError instanceof Error ? lookupError.message : "Address search failed.");
+    } finally {
+      setSearching(null);
+    }
   }
 
   function handleMapPick(coordinates: Coordinate) {
@@ -154,38 +189,52 @@ export default function Home() {
         <div className="route-box">
           <label>
             <span>FROM</span>
-            <select
-              value={fromPoint ? "map-point" : from}
-              onChange={(event) => {
-                if (event.target.value === "map-point") return;
-                selectPreset("from", event.target.value as PlaceId);
-              }}
-            >
-              {fromPoint && <option value="map-point">Map point</option>}
-              {PLACES.map((place) => (
-                <option key={place.id} value={place.id}>
-                  {place.name}
-                </option>
-              ))}
-            </select>
+            <div className="address-row">
+              <input
+                value={fromQuery}
+                onChange={(event) => {
+                  setFromQuery(event.target.value);
+                  setFromPoint(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void searchAddress("from");
+                }}
+                placeholder="Enter starting address"
+              />
+              <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
+                {searching === "from" ? "..." : "SEARCH"}
+              </button>
+            </div>
+            {!fromQuery && (
+              <select value={from} onChange={(event) => selectPreset("from", event.target.value as PlaceId)}>
+                {PLACES.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
+              </select>
+            )}
           </label>
 
           <label>
             <span>TO</span>
-            <select
-              value={toPoint ? "map-point" : to}
-              onChange={(event) => {
-                if (event.target.value === "map-point") return;
-                selectPreset("to", event.target.value as PlaceId);
-              }}
-            >
-              {toPoint && <option value="map-point">Map point</option>}
-              {PLACES.map((place) => (
-                <option key={place.id} value={place.id}>
-                  {place.name}
-                </option>
-              ))}
-            </select>
+            <div className="address-row">
+              <input
+                value={toQuery}
+                onChange={(event) => {
+                  setToQuery(event.target.value);
+                  setToPoint(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void searchAddress("to");
+                }}
+                placeholder="Enter destination address"
+              />
+              <button type="button" className="search-button" onClick={() => void searchAddress("to")} disabled={searching !== null}>
+                {searching === "to" ? "..." : "SEARCH"}
+              </button>
+            </div>
+            {!toQuery && (
+              <select value={to} onChange={(event) => selectPreset("to", event.target.value as PlaceId)}>
+                {PLACES.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
+              </select>
+            )}
           </label>
 
           <div className="map-pick-controls">
@@ -206,7 +255,7 @@ export default function Home() {
           </div>
 
           <p className="map-help">
-            Click the map to place the selected point. Start with FROM, then TO.
+            Enter an address and search, or use the map to drop a pin. Start with FROM, then TO.
           </p>
 
           <button
