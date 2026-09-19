@@ -83,7 +83,7 @@ async function fetchElevations(coordinates: Coordinate[]) {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(8_000),
       headers: {
-        "User-Agent": "CanWeDrive/0.3 (LSV routing research tool)",
+        "User-Agent": "Can We Cart/0.3 (LSV routing research tool)",
       },
       cache: "no-store",
     });
@@ -174,7 +174,7 @@ export async function getRouteTerrain(
       source: "Open-Meteo / Copernicus DEM",
     };
   } catch (error) {
-    console.warn("CanWeDrive terrain lookup failed", error);
+    console.warn("Can We Cart terrain lookup failed", error);
     return null;
   }
 }
