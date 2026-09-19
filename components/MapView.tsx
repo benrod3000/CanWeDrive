@@ -42,10 +42,23 @@ export default function MapView({
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onMapPickRef = useRef(onMapPick);
+  const routeRef = useRef(route);
+  const selectedFromRef = useRef(selectedFrom);
+  const selectedToRef = useRef(selectedTo);
 
   useEffect(() => {
     onMapPickRef.current = onMapPick;
   }, [onMapPick]);
+
+  useEffect(() => {
+    routeRef.current = route;
+    selectedFromRef.current = selectedFrom;
+    selectedToRef.current = selectedTo;
+
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    updateRouteLayers(map, route, selectedFrom, selectedTo);
+  }, [route, selectedFrom, selectedTo]);
 
   useEffect(() => {
     if (!mapNode.current) return;
@@ -130,7 +143,12 @@ export default function MapView({
         },
       });
 
-      updateRouteLayers(map, route, selectedFrom, selectedTo);
+      updateRouteLayers(
+        map,
+        routeRef.current,
+        selectedFromRef.current,
+        selectedToRef.current,
+      );
     });
 
     return () => {
@@ -138,12 +156,6 @@ export default function MapView({
       map.remove();
     };
   }, []);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    updateRouteLayers(map, route, selectedFrom, selectedTo);
-  }, [route, selectedFrom, selectedTo]);
 
   useEffect(() => {
     const map = mapRef.current;
