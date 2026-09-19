@@ -40,7 +40,10 @@ jobs:
         run: |
           set -euo pipefail
           url='https://canwedrive.vercel.app/api/route?fromLon=-117.3506&fromLat=33.1581&toLon=-117.3420&toLat=33.2072'
-          curl -fsS --max-time 45 "$url" -o /tmp/route.json
+          code="$(curl -sS --max-time 45 -w '%{http_code}' "$url" -o /tmp/route.json)"
+          echo "route_http=$code"
+          cat /tmp/route.json
+          test "$code" = "200"
           python - <<'PY'
           import json
           data = json.load(open("/tmp/route.json"))
