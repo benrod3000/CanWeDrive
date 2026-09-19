@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 const LSV_MAX_SPEED_MPH = 35;
 const MATCH_DISTANCE_METERS = 35;
+const ROUTER_EXCLUDE_CLASSES = "motorway,trunk";
 
 type Coordinate = [number, number];
 
@@ -308,7 +309,8 @@ export async function GET(request: NextRequest) {
   const coordinates = `${from.coordinates.join(",")};${to.coordinates.join(",")}`;
   const osrmUrl =
     `https://router.project-osrm.org/route/v1/driving/${coordinates}` +
-    "?overview=full&geometries=geojson&steps=true";
+    "?overview=full&geometries=geojson&steps=true" +
+    `&exclude=${ROUTER_EXCLUDE_CLASSES}`;
 
   try {
     const osrmResponse = await fetch(osrmUrl, {
@@ -437,6 +439,9 @@ export async function GET(request: NextRequest) {
       },
       route: {
         status: overallStatus,
+        routerConstraints: {
+          excludedClasses: ROUTER_EXCLUDE_CLASSES.split(","),
+        },
         distanceMiles: Math.round((route.distance / 1609.344) * 10) / 10,
         durationMinutes: Math.max(1, Math.round(route.duration / 60)),
         geometry: {
