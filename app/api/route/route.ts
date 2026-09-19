@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPlace } from "@/lib/locations";
-import type { Database } from "@/lib/database.types";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -130,8 +128,18 @@ async function fetchStoredSpeedWays(
 
   if (!response.ok) return [];
 
-  const rows =
-    (await response.json()) as Database["public"]["Functions"]["road_segments_near_route"]["Returns"];
+  type StoredRoadRow = {
+    id: number;
+    osm_id: number | null;
+    maxspeed_mph: number | null;
+    speed_source: string | null;
+    geom_geojson: {
+      type?: string;
+      coordinates?: Array<[number, number]>;
+    } | null;
+  };
+
+  const rows = (await response.json()) as StoredRoadRow[];
 
   return rows
     .filter(
@@ -143,12 +151,9 @@ async function fetchStoredSpeedWays(
     .map((row) => ({
       type: "way",
       id: row.osm_id ?? row.id,
-      tags:
-        row.maxspeed_mph === null
-          ? {}
-          : {
-              maxspeed: String(row.maxspeed_mph),
-            },
+      tags: row.maxspeed_mph === null
+        ? ({} as Record<string, string>)
+        : { maxspeed: String(row.maxspeed_mph) },
       geometry: row.geom_geojson!.coordinates!.map(([lon, lat]) => ({
         lon,
         lat,
