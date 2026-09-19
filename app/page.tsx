@@ -195,6 +195,39 @@ export default function Home() {
 
   const status = route ? STATUS_COPY[route.status] : null;
 
+  const speedBuckets = route
+    ? route.segments.reduce(
+        (totals, segment) => {
+          const miles = segment.coordinates.reduce((sum, coordinate, index, coordinates) => {
+            if (index === 0) return sum;
+            const [lon1, lat1] = coordinates[index - 1];
+            const [lon2, lat2] = coordinate;
+            const toRadians = (value: number) => (value * Math.PI) / 180;
+            const dLat = toRadians(lat2 - lat1);
+            const dLon = toRadians(lon2 - lon1);
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRadians(lat1)) *
+                Math.cos(toRadians(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+            const miles = 3958.7613 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return sum + miles;
+          }, 0);
+
+          if (segment.speedMph === null) totals.unknown += miles;
+          else if (segment.speedMph <= 25) totals.under25 += miles;
+          else if (segment.speedMph <= 30) totals.at30 += miles;
+          else if (segment.speedMph <= 35) totals.at35 += miles;
+          return totals;
+        },
+        { under25: 0, at30: 0, at35: 0, unknown: 0 },
+      )
+    : null;
+
+  const verifiedPercent = route
+    ? Math.round(((route.distanceMiles - route.unknownMiles) / route.distanceMiles) * 100)
+    : 0;
+
   return (
     <main className="shell">
       <aside className="panel">
@@ -340,54 +373,94 @@ export default function Home() {
           <section className={`result ${status.tone}`}>
             <div className="status">{status.label}</div>
             <h2>{status.title}</h2>
+
             {route.status === "unknown" && (
               <p className="result-explanation">
-                {Math.round((route.unknownMiles / route.distanceMiles) * 100)}% of this route has no usable posted-speed data in OpenStreetMap. We cannot verify those streets from the map data we have. It does not mean those streets are illegal for an LSV.
+                {100 - verifiedPercent}% of this route has no usable posted-speed data in OpenStreetMap. That means we cannot verify those streets from the map data we have.
               </p>
             )}
-            <div className="trip-stats route-facts">
-              <span>
-                <strong>{route.distanceMiles.toFixed(1)} MI</strong>
-                TOTAL ROUTE
-              </span>
-              <span>
-                <strong>{route.terrain ? `↑ ${route.terrain.elevationGainFeet} FT` : "—"}</strong>
-                CLIMB
-              </span>
-              <span>
-                <strong>{route.terrain ? `↓ ${route.terrain.elevationLossFeet} FT` : "—"}</strong>
-                DESCENT
-              </span>
-              <span>
-                <strong>
-                  {route.terrain
-                    ? `↑ ${route.terrain.maxUphillGradePercent.toFixed(1)}% / ↓ ${route.terrain.maxDownhillGradePercent.toFixed(1)}%`
-                    : "—"}
-                </strong>
-                STEEPEST GRADE
-              </span>
-            </div>
-            <div className={route.unknownMiles > 0 ? "verification-facts has-unknown" : "verification-facts"}>
-              <span>
-                <strong>{Math.max(0, route.distanceMiles - route.unknownMiles).toFixed(2)} MI</strong>
-                SPEED VERIFIED
-              </span>
-              {route.unknownMiles > 0 && (
+
+            <div className="route-section">
+              <div className="section-label">TRIP SNAPSHOT</div>
+              <div className="trip-stats route-facts">
                 <span>
-                  <strong>{route.unknownMiles.toFixed(2)} MI</strong>
-                  NEEDS VERIFICATION
+                  <strong>{route.distanceMiles.toFixed(1)} MI</strong>
+                  TOTAL ROUTE
                 </span>
-              )}
+                <span>
+                  <strong>{route.terrain ? `↑ ${route.terrain.elevationGainFeet} FT` : "—"}</strong>
+                  CLIMB
+                </span>
+                <span>
+                  <strong>{route.terrain ? `↓ ${route.terrain.elevationLossFeet} FT` : "—"}</strong>
+                  DESCENT
+                </span>
+                <span>
+                  <strong>
+                    {route.terrain
+                      ? `↑ ${route.terrain.maxUphillGradePercent.toFixed(1)}% / ↓ ${route.terrain.maxDownhillGradePercent.toFixed(1)}%`
+                      : "—"}
+                  </strong>
+                  STEEPEST GRADE
+                </span>
+              </div>
             </div>
+
+            <div className="route-section">
+              <div className="section-label">SPEED EXPOSURE</div>
+              <div className="speed-bars">
+                <div><span>≤25 MPH</span><strong>{speedBuckets?.under25.toFixed(1) ?? "—"} MI</strong></div>
+                <div><span>30 MPH</span><strong>{speedBuckets?.at30.toFixed(1) ?? "—"} MI</strong></div>
+                <div><span>35 MPH</span><strong>{speedBuckets?.at35.toFixed(1) ?? "—"} MI</strong></div>
+                <div><span>UNKNOWN</span><strong>{speedBuckets?.unknown.toFixed(1) ?? "—"} MI</strong></div>
+              </div>
+              <div className="verification-line">
+                <strong>{verifiedPercent}%</strong>
+                <span>OF THE ROUTE HAS USABLE SPEED DATA</span>
+              </div>
+            </div>
+
+            <div className="route-section">
+              <div className="section-label">THINGS TO KNOW</div>
+              <div className="route-flags">
+                {route.terrain && route.terrain.maxUphillGradePercent >= 5 && (
+                  <div>
+                    <strong>HILLS</strong>
+                    <span>Route reaches a {route.terrain.maxUphillGradePercent.toFixed(1)}% uphill grade.</span>
+                  </div>
+                )}
+                {speedBuckets && speedBuckets.at35 > 0 && (
+                  <div>
+                    <strong>35 MPH ROAD</strong>
+                    <span>{speedBuckets.at35.toFixed(1)} miles are mapped at the maximum LSV speed.</span>
+                  </div>
+                )}
+                {route.unknownMiles > 0 && (
+                  <div>
+                    <strong>UNVERIFIED</strong>
+                    <span>{route.unknownMiles.toFixed(1)} miles have no usable posted-speed data.</span>
+                  </div>
+                )}
+                {route.terrain && route.terrain.maxUphillGradePercent < 5 && route.unknownMiles === 0 && (!speedBuckets || speedBuckets.at35 === 0) && (
+                  <div>
+                    <strong>NO FLAGS</strong>
+                    <span>No additional route conditions were identified from the available data.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <p className="terrain-note">
               {route.terrain
                 ? "Terrain is estimated from a 90 m elevation model. Hills can increase energy use, especially on longer climbs."
                 : "Terrain data was unavailable for this route."}
             </p>
+
             <div className="result-endpoints">
               <div><span>FROM</span><strong>{searchedFrom}</strong></div>
               <div><span>TO</span><strong>{searchedTo}</strong></div>
             </div>
+
             <div className="notice">
               <strong>IMPORTANT</strong>
               <span>
