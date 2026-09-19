@@ -10,7 +10,7 @@ jobs:
   import:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_POOLER_URL }}
 
     steps:
       - name: Check out repository
@@ -24,8 +24,8 @@ jobs:
       - name: Check database secret
         run: |
           if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "SUPABASE_DB_URL is not configured."
-            echo "Add the Supabase Postgres connection string as a GitHub Actions secret before running this workflow."
+            echo "SUPABASE_POOLER_URL is not configured."
+            echo "Add the Supabase Session pooler connection string as the SUPABASE_POOLER_URL GitHub Actions secret before running this workflow."
             exit 1
           fi
 
