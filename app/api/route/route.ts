@@ -208,6 +208,24 @@ async function buildGraphRouteResult(rows: GraphRouteRow[]) {
   if (routeCoordinates.length < 2) return null;
 
   const distanceMiles = distanceMeters / 1609.344;
+  const estimatedMinutes = segments.reduce((minutes, segment) => {
+    const segmentMiles = segment.coordinates.reduce((miles, coordinate, index, coordinates) => {
+      if (index === 0) return miles;
+      const [lon1, lat1] = coordinates[index - 1];
+      const [lon2, lat2] = coordinate;
+      const toRadians = (value: number) => (value * Math.PI) / 180;
+      const dLat = toRadians(lat2 - lat1);
+      const dLon = toRadians(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(lat1)) *
+          Math.cos(toRadians(lat2)) *
+          Math.sin(dLon / 2) ** 2;
+      return miles + (3958.7613 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }, 0);
+    const assumedSpeed = segment.speedMph ?? 25;
+    return minutes + (segmentMiles / Math.max(1, assumedSpeed)) * 60;
+  }, 0);
   const terrain = await getRouteTerrain(routeCoordinates);
 
   return {
@@ -219,7 +237,7 @@ async function buildGraphRouteResult(rows: GraphRouteRow[]) {
       excludedClasses: ["motorway", "motorway_link", "motorroad"],
     },
     distanceMiles: Math.round(distanceMiles * 10) / 10,
-    durationMinutes: null,
+    durationMinutes: Math.round(estimatedMinutes),
     geometry: {
       type: "LineString" as const,
       coordinates: routeCoordinates,
