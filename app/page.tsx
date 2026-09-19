@@ -8,7 +8,7 @@ type RouteResult = {
   route: {
     status: "eligible" | "blocked" | "unknown";
     distanceMiles: number;
-    durationMinutes: number;
+    durationMinutes: number | null;
     geometry: {
       type: "LineString";
       coordinates: [number, number][];
