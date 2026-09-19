@@ -71,6 +71,35 @@ select {
   color: var(--ink);
 }
 
+.map-pick-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pick-button {
+  padding: 10px 8px;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.pick-button.active {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.map-help {
+  margin: -3px 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .drive-button {
   margin-top: 4px;
   padding: 17px 14px;
@@ -228,6 +257,7 @@ footer {
     font-size: clamp(38px, 12vw, 46px);
     letter-spacing: -.065em;
   }
+
   footer { margin-top: 24px; }
 
   .legend {
