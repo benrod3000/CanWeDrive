@@ -342,8 +342,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const route = osrm.routes[0];
-    const routeCoordinates = route.geometry.coordinates;
+    const route = osrm.routes?.[0];
+    if (!route?.geometry?.coordinates?.length) {
+      return NextResponse.json(
+        { error: "No driving route geometry was returned." },
+        { status: 502 },
+      );
+    }
+    const routeCoordinates: Coordinate[] = route.geometry.coordinates;
 
     let speedWays: OverpassWay[] = [];
 
