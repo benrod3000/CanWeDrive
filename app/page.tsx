@@ -416,12 +416,8 @@ export default function Home() {
 
             <div className="route-section">
               <div className="section-label">TRIP SNAPSHOT</div>
-              <div className="trip-stats route-facts">
-                <span>
-                  <strong>{route.distanceMiles.toFixed(1)} MI</strong>
-                  TOTAL ROUTE
-                </span>
-                <span>
+              <div className="primary-trip-facts">
+                <div className="trip-time">
                   <strong>
                     {route.durationMinutes === null
                       ? "—"
@@ -429,8 +425,14 @@ export default function Home() {
                         ? `${Math.floor(route.durationMinutes / 60)}H ${route.durationMinutes % 60}M`
                         : `${route.durationMinutes} MIN`}
                   </strong>
-                  EST. TIME
-                </span>
+                  <span>EST. TRIP TIME</span>
+                </div>
+                <div className="trip-distance">
+                  <strong>{route.distanceMiles.toFixed(1)} MI</strong>
+                  <span>TOTAL ROUTE</span>
+                </div>
+              </div>
+              <div className="trip-stats route-facts">
                 <span>
                   <strong>{route.terrain ? `↑ ${route.terrain.elevationGainFeet} FT` : "—"}</strong>
                   CLIMB
