@@ -2,17 +2,92 @@
 
 import { useState } from "react";
 import MapView from "../components/MapView";
+import { PLACES, type PlaceId } from "../lib/locations";
 
-const places = [
-  "Carlsbad Village",
-  "Encinitas",
-  "Oceanside Harbor"
-];
+type RouteResult = {
+  route: {
+    status: "eligible" | "blocked" | "unknown";
+    distanceMiles: number;
+    durationMinutes: number;
+    geometry: {
+      type: "LineString";
+      coordinates: [number, number][];
+    };
+    segments: Array<{
+      coordinates: [[number, number], [number, number]];
+      status: "eligible" | "blocked" | "unknown";
+    }>;
+    speedDataAvailable: boolean;
+  };
+  from: { name: string; coordinates: [number, number] };
+  to: { name: string; coordinates: [number, number] };
+};
+
+const STATUS_COPY = {
+  eligible: {
+    label: "WITHIN 35 MPH DATA",
+    title: "The mapped route stays at 35 MPH or less.",
+    tone: "eligible",
+  },
+  unknown: {
+    label: "NOT FULLY VERIFIED",
+    title: "Part of this route has no usable posted-speed data.",
+    tone: "unknown",
+  },
+  blocked: {
+    label: "OVER 35 MPH",
+    title: "This route includes a road mapped above 35 MPH.",
+    tone: "blocked",
+  },
+} as const;
 
 export default function Home() {
-  const [from, setFrom] = useState(places[0]);
-  const [to, setTo] = useState(places[1]);
-  const [searched, setSearched] = useState(false);
+  const [from, setFrom] = useState<PlaceId>("carlsbad-village");
+  const [to, setTo] = useState<PlaceId>("encinitas");
+  const [route, setRoute] = useState<RouteResult["route"] | null>(null);
+  const [searchedFrom, setSearchedFrom] = useState("");
+  const [searchedTo, setSearchedTo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function checkRoute() {
+    if (from === to) {
+      setError("Pick two different locations.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      );
+
+      const payload = (await response.json()) as RouteResult & {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Route lookup failed.");
+      }
+
+      setRoute(payload.route);
+      setSearchedFrom(payload.from.name);
+      setSearchedTo(payload.to.name);
+    } catch (lookupError) {
+      setRoute(null);
+      setError(
+        lookupError instanceof Error
+          ? lookupError.message
+          : "Route lookup failed.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const status = route ? STATUS_COPY[route.status] : null;
 
   return (
     <main className="shell">
@@ -26,20 +101,38 @@ export default function Home() {
         <div className="route-box">
           <label>
             <span>FROM</span>
-            <select value={from} onChange={(e) => setFrom(e.target.value)}>
-              {places.map((place) => <option key={place}>{place}</option>)}
+            <select
+              value={from}
+              onChange={(event) => setFrom(event.target.value as PlaceId)}
+            >
+              {PLACES.map((place) => (
+                <option key={place.id} value={place.id}>
+                  {place.name}
+                </option>
+              ))}
             </select>
           </label>
 
           <label>
             <span>TO</span>
-            <select value={to} onChange={(e) => setTo(e.target.value)}>
-              {places.map((place) => <option key={place}>{place}</option>)}
+            <select
+              value={to}
+              onChange={(event) => setTo(event.target.value as PlaceId)}
+            >
+              {PLACES.map((place) => (
+                <option key={place.id} value={place.id}>
+                  {place.name}
+                </option>
+              ))}
             </select>
           </label>
 
-          <button className="drive-button" onClick={() => setSearched(true)}>
-            CAN WE DRIVE THERE?
+          <button
+            className="drive-button"
+            onClick={checkRoute}
+            disabled={loading}
+          >
+            {loading ? "CHECKING ROUTE..." : "CAN WE DRIVE THERE?"}
           </button>
         </div>
 
@@ -51,33 +144,58 @@ export default function Home() {
           <div className="speed">≤ 35 MPH</div>
         </div>
 
-        {searched && (
-          <section className="result">
-            <div className="status">BASELINE ROUTE</div>
-            <h2>{from} → {to}</h2>
+        {error && <div className="error-box">{error}</div>}
+
+        {route && status && (
+          <section className={`result ${status.tone}`}>
+            <div className="status">{status.label}</div>
+            <h2>{status.title}</h2>
+            <div className="trip-stats">
+              <span>
+                <strong>{route.distanceMiles} MI</strong>
+                ROUTE
+              </span>
+              <span>
+                <strong>{route.durationMinutes} MIN</strong>
+                CAR ROUTE
+              </span>
+            </div>
             <p>
-              This first build maps the trip and applies the California 35 mph
-              baseline. Road-by-road verification is being added next.
+              {searchedFrom} → {searchedTo}
             </p>
             <div className="notice">
-              <strong>CHECK BEFORE YOU GO</strong>
-              <span>Posted signs and local restrictions can override map data.</span>
+              <strong>IMPORTANT</strong>
+              <span>
+                Speed data comes from OpenStreetMap tags. Posted signs and local
+                restrictions can override the map.
+              </span>
             </div>
           </section>
         )}
 
         <footer>
-          <span>CanWeDrive v0.1</span>
-          <span>OpenStreetMap + OpenFreeMap</span>
+          <span>CanWeDrive v0.2</span>
+          <span>OSM + OSRM + Overpass</span>
         </footer>
       </aside>
 
       <section className="map-wrap">
-        <MapView />
+        <MapView
+          route={
+            route
+              ? {
+                  geometry: route.geometry,
+                  segments: route.segments,
+                  from: PLACES.find((place) => place.id === from)!,
+                  to: PLACES.find((place) => place.id === to)!,
+                }
+              : null
+          }
+        />
         <div className="legend">
-          <span><i className="ok" /> 35 mph or less</span>
+          <span><i className="ok" /> ≤ 35 mph</span>
           <span><i className="unknown" /> Unknown</span>
-          <span><i className="blocked" /> Over 35 mph</span>
+          <span><i className="blocked" /> &gt; 35 mph</span>
         </div>
       </section>
     </main>
