@@ -126,6 +126,7 @@ export default function Home() {
       setPickMode("to");
     } else {
       setToPoint(point);
+      setToQuery(point.name);
     }
 
     setRoute(null);
