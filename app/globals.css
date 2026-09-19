@@ -71,6 +71,38 @@ select {
   color: var(--ink);
 }
 
+input {
+  width: 100%;
+  min-width: 0;
+  padding: 14px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--ink);
+}
+
+.address-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.search-button {
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.search-button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
 .map-pick-controls {
   display: grid;
   grid-template-columns: 1fr 1fr;
