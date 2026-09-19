@@ -241,6 +241,78 @@ function nearestSpeedForPoint(
   return closestSpeed;
 }
 
+function evaluateRoute(
+  routeCoordinates: Coordinate[],
+  speedWays: OverpassWay[],
+) {
+  const { grid, cellSize } = buildGrid(speedWays);
+  const segments: RouteSegment[] = [];
+  let unknownMiles = 0;
+  let blockedMiles = 0;
+
+  for (let i = 1; i < routeCoordinates.length; i += 1) {
+    const start = routeCoordinates[i - 1];
+    const end = routeCoordinates[i];
+    const midpoint: Coordinate = [
+      (start[0] + end[0]) / 2,
+      (start[1] + end[1]) / 2,
+    ];
+
+    const speedMph = nearestSpeedForPoint(
+      midpoint,
+      speedWays,
+      grid,
+      cellSize,
+    );
+    const status =
+      speedMph === null
+        ? "unknown"
+        : speedMph > LSV_MAX_SPEED_MPH
+          ? "blocked"
+          : "eligible";
+
+    const segmentMiles = haversineMiles(start, end);
+    if (status === "unknown") unknownMiles += segmentMiles;
+    if (status === "blocked") blockedMiles += segmentMiles;
+
+    segments.push({
+      coordinates: [start, end],
+      status,
+      speedMph:
+        speedMph === null ? null : Math.round(speedMph * 10) / 10,
+      source: speedMph === null ? null : "OpenStreetMap",
+    });
+  }
+
+  const overallStatus =
+    blockedMiles > 0
+      ? "blocked"
+      : unknownMiles > 0
+        ? "unknown"
+        : "eligible";
+
+  return {
+    status: overallStatus as "eligible" | "blocked" | "unknown",
+    segments,
+    unknownMiles,
+    blockedMiles,
+  };
+}
+
+function haversineMiles(start: Coordinate, end: Coordinate) {
+  const earthRadiusMiles = 3958.7613;
+  const dLat = toRadians(end[1] - start[1]);
+  const dLon = toRadians(end[0] - start[0]);
+  const lat1 = toRadians(start[1]);
+  const lat2 = toRadians(end[1]);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 async function fetchSpeedWays(
   coordinates: Coordinate[],
 ): Promise<OverpassWay[]> {
@@ -309,7 +381,7 @@ export async function GET(request: NextRequest) {
   const coordinates = `${from.coordinates.join(",")};${to.coordinates.join(",")}`;
   const osrmUrl =
     `https://router.project-osrm.org/route/v1/driving/${coordinates}` +
-    "?overview=full&geometries=geojson&steps=true" +
+    "?overview=full&geometries=geojson&steps=true&alternatives=true" +
     `&exclude=${ROUTER_EXCLUDE_CLASSES}`;
 
   try {
@@ -349,78 +421,77 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const route = osrm.routes?.[0];
-    if (!route?.geometry?.coordinates?.length) {
+    const routeCandidates = (osrm.routes ?? []).filter(
+      (candidate) => candidate.geometry?.coordinates?.length,
+    );
+
+    if (!routeCandidates.length) {
       return NextResponse.json(
-        { error: "No driving route geometry was returned." },
-        { status: 502 },
+        {
+          error:
+            osrm.code === "NoRoute"
+              ? "No non-freeway driving route was found between those locations."
+              : "No driving route geometry was returned.",
+        },
+        { status: 404 },
       );
     }
-    const routeCoordinates: Coordinate[] = route.geometry.coordinates;
 
-    let speedWays: OverpassWay[] = [];
+    const evaluatedCandidates = [];
 
-    try {
-      speedWays = await fetchStoredSpeedWays({
-        type: "LineString",
-        coordinates: routeCoordinates,
-      });
-    } catch {
-      speedWays = [];
-    }
+    for (const candidate of routeCandidates) {
+      const routeCoordinates: Coordinate[] = candidate.geometry!
+        .coordinates!;
 
-    if (speedWays.length === 0) {
+      let speedWays: OverpassWay[] = [];
+
       try {
-        speedWays = await fetchSpeedWays(routeCoordinates);
+        speedWays = await fetchStoredSpeedWays({
+          type: "LineString",
+          coordinates: routeCoordinates,
+        });
       } catch {
         speedWays = [];
       }
-    }
 
-    const { grid, cellSize } = buildGrid(speedWays);
-    const segments: RouteSegment[] = [];
-    let unknownCount = 0;
-    let blockedCount = 0;
+      if (speedWays.length === 0) {
+        try {
+          speedWays = await fetchSpeedWays(routeCoordinates);
+        } catch {
+          speedWays = [];
+        }
+      }
 
-    for (let i = 1; i < routeCoordinates.length; i += 1) {
-      const start = routeCoordinates[i - 1];
-      const end = routeCoordinates[i];
-      const midpoint: Coordinate = [
-        (start[0] + end[0]) / 2,
-        (start[1] + end[1]) / 2,
-      ];
-
-      const speedMph = nearestSpeedForPoint(
-        midpoint,
-        speedWays,
-        grid,
-        cellSize,
-      );
-      const status =
-        speedMph === null
-          ? "unknown"
-          : speedMph > LSV_MAX_SPEED_MPH
-            ? "blocked"
-            : "eligible";
-
-      if (status === "unknown") unknownCount += 1;
-      if (status === "blocked") blockedCount += 1;
-
-      segments.push({
-        coordinates: [start, end],
-        status,
-        speedMph:
-          speedMph === null ? null : Math.round(speedMph * 10) / 10,
-        source: speedMph === null ? null : "OpenStreetMap",
+      evaluatedCandidates.push({
+        candidate,
+        routeCoordinates,
+        speedDataAvailable: speedWays.length > 0,
+        ...evaluateRoute(routeCoordinates, speedWays),
       });
     }
 
-    const overallStatus =
-      blockedCount > 0
-        ? "blocked"
-        : unknownCount > 0
-          ? "unknown"
-          : "eligible";
+    const statusRank = {
+      eligible: 0,
+      unknown: 1,
+      blocked: 2,
+    };
+
+    evaluatedCandidates.sort((a, b) => {
+      const statusDifference = statusRank[a.status] - statusRank[b.status];
+      if (statusDifference !== 0) return statusDifference;
+
+      const blockedDifference = a.blockedMiles - b.blockedMiles;
+      if (Math.abs(blockedDifference) > 0.05) return blockedDifference;
+
+      const unknownDifference = a.unknownMiles - b.unknownMiles;
+      if (Math.abs(unknownDifference) > 0.05) return unknownDifference;
+
+      return a.candidate.distance - b.candidate.distance;
+    });
+
+    const selected = evaluatedCandidates[0];
+    const route = selected.candidate;
+    const routeCoordinates = selected.routeCoordinates;
 
     return NextResponse.json({
       vehicle: {
@@ -438,7 +509,11 @@ export async function GET(request: NextRequest) {
         coordinates: to.coordinates,
       },
       route: {
-        status: overallStatus,
+        status: selected.status,
+        blockedMiles: Math.round(selected.blockedMiles * 10) / 10,
+        unknownMiles: Math.round(selected.unknownMiles * 10) / 10,
+        alternativesConsidered: evaluatedCandidates.length,
+
         routerConstraints: {
           excludedClasses: ROUTER_EXCLUDE_CLASSES.split(","),
         },
@@ -448,8 +523,8 @@ export async function GET(request: NextRequest) {
           type: "LineString",
           coordinates: routeCoordinates,
         },
-        segments,
-        speedDataAvailable: speedWays.length > 0,
+        segments: selected.segments,
+        speedDataAvailable: selected.speedDataAvailable,
       },
     });
   } catch (error) {
