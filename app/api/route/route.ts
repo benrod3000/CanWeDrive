@@ -551,6 +551,8 @@ export async function GET(request: NextRequest) {
     "?overview=full&geometries=geojson&steps=true&alternatives=true" +
     `&exclude=${ROUTER_EXCLUDE_CLASSES}`;
 
+  const startedAt = Date.now();
+
   try {
     let graphRoute: GraphRouteResult;
 
@@ -578,7 +580,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       vehicle: {
         id: "golf_cart_lsv",
         maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
@@ -595,6 +597,9 @@ export async function GET(request: NextRequest) {
       },
       route: graphResult,
     });
+    response.headers.set("x-canwedrive-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
+    response.headers.set("x-canwedrive-route-ms", String(Date.now() - startedAt));
+    return response;
 
     /* Ordinary car routing is intentionally not used as a fallback. */
     /*
@@ -713,7 +718,13 @@ export async function GET(request: NextRequest) {
 
     */
   } catch (error) {
-    console.error("CanWeDrive route error", error);
+    console.error("CanWeDrive route error", {
+      error: error instanceof Error ? error.message : String(error),
+      from: from.coordinates,
+      to: to.coordinates,
+      elapsedMs: Date.now() - startedAt,
+      version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
+    });
 
     return NextResponse.json(
       {
