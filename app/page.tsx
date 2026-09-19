@@ -32,6 +32,8 @@ type RouteResult = {
       elevationLossFeet: number;
       maxUphillGradePercent: number;
       maxDownhillGradePercent: number;
+      longestClimbMiles: number;
+      profile: Array<{ distanceMiles: number; elevationFeet: number }>;
       source: string;
     } | null;
   };
@@ -230,6 +232,30 @@ export default function Home() {
     ? Math.round(((route.distanceMiles - route.unknownMiles) / route.distanceMiles) * 100)
     : 0;
 
+  const elevationPath = route?.terrain?.profile?.length
+    ? (() => {
+        const points = route.terrain.profile;
+        const minElevation = Math.min(...points.map((point) => point.elevationFeet));
+        const maxElevation = Math.max(...points.map((point) => point.elevationFeet));
+        const elevationRange = Math.max(1, maxElevation - minElevation);
+        const width = 640;
+        const height = 150;
+        const padX = 4;
+        const padY = 12;
+        const innerWidth = width - padX * 2;
+        const innerHeight = height - padY * 2;
+        const maxDistance = Math.max(0.1, points[points.length - 1].distanceMiles);
+        const coordinates = points.map((point) => {
+          const x = padX + (point.distanceMiles / maxDistance) * innerWidth;
+          const y = height - padY - ((point.elevationFeet - minElevation) / elevationRange) * innerHeight;
+          return [x, y] as const;
+        });
+        const line = coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+        const area = `M ${coordinates[0][0].toFixed(1)} ${height - padY} L ${line.replace(/ /g, " L ")} L ${coordinates[coordinates.length - 1][0].toFixed(1)} ${height - padY} Z`;
+        return { line, area, minElevation, maxElevation, maxDistance };
+      })()
+    : null;
+
   return (
     <main className="shell">
       <aside className="panel">
@@ -407,6 +433,27 @@ export default function Home() {
                 </span>
               </div>
             </div>
+
+            {route.terrain && elevationPath && (
+              <div className="route-section">
+                <div className="section-label">ELEVATION PROFILE</div>
+                <div className="elevation-profile">
+                  <svg viewBox="0 0 640 150" role="img" aria-label="Route elevation profile">
+                    <polygon points={elevationPath.area.replace(/^M /, "").replace(/ Z$/, "")} />
+                    <polyline points={elevationPath.line} />
+                  </svg>
+                  <div className="elevation-labels">
+                    <span>{elevationPath.minElevation} FT</span>
+                    <span>{elevationPath.maxDistance.toFixed(1)} MI</span>
+                    <span>{elevationPath.maxElevation} FT</span>
+                  </div>
+                </div>
+                <div className="climb-callout">
+                  <strong>{route.terrain.longestClimbMiles.toFixed(1)} MI</strong>
+                  <span>LONGEST CONTINUOUS CLIMB</span>
+                </div>
+              </div>
+            )}
 
             <div className="route-section">
               <div className="section-label">SPEED EXPOSURE</div>
