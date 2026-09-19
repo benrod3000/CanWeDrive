@@ -60,6 +60,28 @@ button, select { font: inherit; }
 }
 
 .route-box { display: grid; gap: 12px; }
+
+.address-stack { position: relative; display: grid; gap: 8px; }
+.route-step { position: relative; display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: end; }
+.route-step label { min-width: 0; }
+.route-marker { width: 24px; height: 24px; display: grid; place-items: center; border: 2px solid var(--ink); background: var(--white); font-size: 10px; font-weight: 900; line-height: 1; margin-bottom: 1px; z-index: 1; }
+.from-marker { background: var(--ink); color: var(--white); }
+.to-marker { background: var(--yellow); }
+.route-rail { position: absolute; left: 11px; top: 22px; bottom: 22px; width: 2px; background: var(--ink); }
+.address-row { min-width: 0; }
+
+.search-results { margin: -3px 0 2px 34px; border: 2px solid var(--ink); background: var(--white); }
+.search-results-label { padding: 7px 9px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .1em; }
+.search-result { width: 100%; display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; padding: 9px; border: 0; border-bottom: 1px solid var(--line); background: var(--white); color: var(--ink); text-align: left; cursor: pointer; }
+.search-result:last-child { border-bottom: 0; }
+.search-result:hover { background: var(--yellow); }
+.search-result span { font-size: 10px; font-weight: 900; }
+.search-result strong { font-size: 12px; line-height: 1.25; font-weight: 700; }
+
+.route-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+.swap-button { padding: 10px 9px; border: 2px solid var(--ink); background: var(--ink); color: var(--white); font-size: 10px; font-weight: 900; letter-spacing: .06em; cursor: pointer; white-space: nowrap; }
+.swap-button:hover:not(:disabled) { background: #2a2a2a; }
+.swap-button:disabled { opacity: .35; cursor: not-allowed; }
 label { display: grid; gap: 6px; }
 
 select {
@@ -271,7 +293,7 @@ footer {
 .map { position: absolute; inset: 0; }
 
 .map-wrap::after {
-  content: "CLICK THE MAP TO DROP A PIN";
+  content: "PICK A ON MAP";
   position: absolute;
   top: 18px;
   right: 18px;
@@ -286,6 +308,7 @@ footer {
 }
 
 .map-wrap.has-route::after { content: "ROUTE SHOWN"; }
+.map-wrap.pick-to::after { content: "PICK B ON MAP"; }
 
 .legend {
   position: absolute;
@@ -309,6 +332,9 @@ footer {
 .legend .blocked { background: var(--ink); }
 
 @media (max-width: 760px) {
+  .route-actions { grid-template-columns: 1fr 1fr; }
+  .swap-button { grid-column: 1 / -1; }
+  .search-results { margin-left: 34px; }
   .shell {
     grid-template-columns: 1fr;
     grid-template-rows: auto 58vh;
