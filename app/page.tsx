@@ -25,6 +25,13 @@ type RouteResult = {
       status: "eligible" | "blocked" | "unknown";
     }>;
     speedDataAvailable: boolean;
+    terrain: {
+      elevationGainFeet: number;
+      elevationLossFeet: number;
+      maxUphillGradePercent: number;
+      maxDownhillGradePercent: number;
+      source: string;
+    } | null;
   };
   from: { name: string; coordinates: Coordinate };
   to: { name: string; coordinates: Coordinate };
@@ -335,17 +342,35 @@ export default function Home() {
             <h2>{status.title}</h2>
             {route.status === "unknown" && (
               <p className="result-explanation">
-                About {route.unknownMiles.toFixed(2)} miles of this route has no usable posted-speed data in OpenStreetMap. We cannot verify those streets from the map data we have. It does not mean the streets are illegal for an LSV.
+                {Math.round((route.unknownMiles / route.distanceMiles) * 100)}% of this route has no usable posted-speed data in OpenStreetMap. We cannot verify those streets from the map data we have. It does not mean those streets are illegal for an LSV.
               </p>
             )}
-            <div className={route.unknownMiles > 0 ? "trip-stats has-unknown" : "trip-stats"}>
+            <div className="trip-stats route-facts">
               <span>
                 <strong>{route.distanceMiles.toFixed(1)} MI</strong>
                 TOTAL ROUTE
               </span>
               <span>
-                <strong>0</strong>
-                FREEWAYS
+                <strong>{route.terrain ? `↑ ${route.terrain.elevationGainFeet} FT` : "—"}</strong>
+                CLIMB
+              </span>
+              <span>
+                <strong>{route.terrain ? `↓ ${route.terrain.elevationLossFeet} FT` : "—"}</strong>
+                DESCENT
+              </span>
+              <span>
+                <strong>
+                  {route.terrain
+                    ? `↑ ${route.terrain.maxUphillGradePercent.toFixed(1)}% / ↓ ${route.terrain.maxDownhillGradePercent.toFixed(1)}%`
+                    : "—"}
+                </strong>
+                STEEPEST GRADE
+              </span>
+            </div>
+            <div className={route.unknownMiles > 0 ? "verification-facts has-unknown" : "verification-facts"}>
+              <span>
+                <strong>{Math.max(0, route.distanceMiles - route.unknownMiles).toFixed(2)} MI</strong>
+                SPEED VERIFIED
               </span>
               {route.unknownMiles > 0 && (
                 <span>
@@ -354,6 +379,11 @@ export default function Home() {
                 </span>
               )}
             </div>
+            <p className="terrain-note">
+              {route.terrain
+                ? "Terrain is estimated from a 90 m elevation model. Hills can increase energy use, especially on longer climbs."
+                : "Terrain data was unavailable for this route."}
+            </p>
             <div className="result-endpoints">
               <div><span>FROM</span><strong>{searchedFrom}</strong></div>
               <div><span>TO</span><strong>{searchedTo}</strong></div>
