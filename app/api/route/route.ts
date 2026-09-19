@@ -536,38 +536,48 @@ export async function GET(request: NextRequest) {
 
     graphRoute = await fetchGraphRoute(from.coordinates, to.coordinates);
 
-    if (graphRoute.networkAvailable) {
-      const graphResult = buildGraphRouteResult(graphRoute.rows);
-
-      if (!graphResult) {
-        return NextResponse.json(
-          {
-            error:
-              "No LSV route was found under the current road-network rules.",
-          },
-          { status: 404 },
-        );
-      }
-
-      return NextResponse.json({
-        vehicle: {
-          id: "golf_cart_lsv",
-          maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
+    if (!graphRoute.networkAvailable) {
+      return NextResponse.json(
+        {
+          error:
+            "The LSV road network is not available yet. Please try again after the road data has loaded.",
         },
-        from: {
-          id: from.id,
-          name: from.name,
-          coordinates: from.coordinates,
-        },
-        to: {
-          id: to.id,
-          name: to.name,
-          coordinates: to.coordinates,
-        },
-        route: graphResult,
-      });
+        { status: 503 },
+      );
     }
 
+    const graphResult = buildGraphRouteResult(graphRoute.rows);
+
+    if (!graphResult) {
+      return NextResponse.json(
+        {
+          error:
+            "No LSV route was found under the current road-network rules.",
+        },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      vehicle: {
+        id: "golf_cart_lsv",
+        maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
+      },
+      from: {
+        id: from.id,
+        name: from.name,
+        coordinates: from.coordinates,
+      },
+      to: {
+        id: to.id,
+        name: to.name,
+        coordinates: to.coordinates,
+      },
+      route: graphResult,
+    });
+
+    /* Ordinary car routing is intentionally not used as a fallback. */
+    /*
     const osrmResponse = await fetch(osrmUrl, {
       headers: {
         "User-Agent": "CanWeDrive/0.1 (open-source LSV route research tool)",
@@ -681,40 +691,7 @@ export async function GET(request: NextRequest) {
     const route = selected.candidate;
     const routeCoordinates = selected.routeCoordinates;
 
-    return NextResponse.json({
-      vehicle: {
-        id: "golf_cart_lsv",
-        maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
-      },
-      from: {
-        id: from.id,
-        name: from.name,
-        coordinates: from.coordinates,
-      },
-      to: {
-        id: to.id,
-        name: to.name,
-        coordinates: to.coordinates,
-      },
-      route: {
-        status: selected.status,
-        blockedMiles: Math.round(selected.blockedMiles * 10) / 10,
-        unknownMiles: Math.round(selected.unknownMiles * 10) / 10,
-        alternativesConsidered: evaluatedCandidates.length,
-
-        routerConstraints: {
-          excludedClasses: ROUTER_EXCLUDE_CLASSES.split(","),
-        },
-        distanceMiles: Math.round((route.distance / 1609.344) * 10) / 10,
-        durationMinutes: Math.max(1, Math.round(route.duration / 60)),
-        geometry: {
-          type: "LineString",
-          coordinates: routeCoordinates,
-        },
-        segments: selected.segments,
-        speedDataAvailable: selected.speedDataAvailable,
-      },
-    });
+    */
   } catch (error) {
     console.error("CanWeDrive route error", error);
 
