@@ -19,7 +19,7 @@ type OverpassWay = {
 };
 
 type RouteSegment = {
-  coordinates: [Coordinate, Coordinate];
+  coordinates: Coordinate[];
   status: "eligible" | "blocked" | "unknown";
   speedMph: number | null;
   source: "OpenStreetMap" | null;
@@ -194,7 +194,7 @@ function buildGraphRouteResult(rows: GraphRouteRow[]) {
     }
 
     segments.push({
-      coordinates: [start, end],
+      coordinates,
       status,
       speedMph:
         row.maxspeed_mph === null
