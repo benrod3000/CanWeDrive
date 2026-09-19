@@ -242,6 +242,10 @@ input:focus {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.route-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .trip-stats span {
   display: grid;
   gap: 3px;
@@ -255,6 +259,36 @@ input:focus {
 .trip-stats strong {
   font-size: 19px;
   letter-spacing: -.02em;
+}
+
+.verification-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.verification-facts span {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border-top: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.verification-facts strong {
+  font-size: 16px;
+  letter-spacing: -.02em;
+}
+
+.terrain-note {
+  margin: 0 0 2px !important;
+  color: var(--muted) !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
 }
 
 .notice {
@@ -327,8 +361,8 @@ footer {
 
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; display: inline-block; border: 1px solid var(--ink); }
-.legend .ok { background: var(--yellow); }
-.legend .unknown { background: var(--grey); }
+.legend .ok { background: #ff3b30; }
+.legend .unknown { background: #00a6ff; }
 .legend .blocked { background: var(--ink); }
 
 @media (max-width: 760px) {
