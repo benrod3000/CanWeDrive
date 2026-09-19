@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import MapView from "../components/MapView";
-import { PLACES, type PlaceId } from "../lib/locations";
 
 type Coordinate = [number, number];
 
@@ -50,8 +49,6 @@ const STATUS_COPY = {
 } as const;
 
 export default function Home() {
-  const [from, setFrom] = useState<PlaceId>("carlsbad-village");
-  const [to, setTo] = useState<PlaceId>("encinitas");
   const [fromPoint, setFromPoint] = useState<SelectedPoint | null>(null);
   const [toPoint, setToPoint] = useState<SelectedPoint | null>(null);
   const [route, setRoute] = useState<RouteResult["route"] | null>(null);
@@ -64,21 +61,8 @@ export default function Home() {
   const [toQuery, setToQuery] = useState("");
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
 
-  const activeFrom = fromPoint ?? PLACES.find((place) => place.id === from)!;
-  const activeTo = toPoint ?? PLACES.find((place) => place.id === to)!;
-
-  function selectPreset(type: "from" | "to", id: PlaceId) {
-    if (type === "from") {
-      setFrom(id);
-      setFromPoint(null);
-    } else {
-      setTo(id);
-      setToPoint(null);
-    }
-    setRoute(null);
-    setError("");
-    setPickMode(type);
-  }
+  const activeFrom = fromPoint;
+  const activeTo = toPoint;
 
   async function searchAddress(type: "from" | "to") {
     const query = (type === "from" ? fromQuery : toQuery).trim();
@@ -131,10 +115,17 @@ export default function Home() {
 
   async function checkRoute() {
     if (
+      activeFrom &&
+      activeTo &&
       activeFrom.coordinates[0] === activeTo.coordinates[0] &&
       activeFrom.coordinates[1] === activeTo.coordinates[1]
     ) {
       setError("Pick two different points.");
+      return;
+    }
+
+    if (!activeFrom || !activeTo) {
+      setError("Enter both a starting address and destination first.");
       return;
     }
 
@@ -205,11 +196,6 @@ export default function Home() {
                 {searching === "from" ? "..." : "SEARCH"}
               </button>
             </div>
-            {!fromQuery && (
-              <select value={from} onChange={(event) => selectPreset("from", event.target.value as PlaceId)}>
-                {PLACES.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
-              </select>
-            )}
           </label>
 
           <label>
@@ -230,11 +216,6 @@ export default function Home() {
                 {searching === "to" ? "..." : "SEARCH"}
               </button>
             </div>
-            {!toQuery && (
-              <select value={to} onChange={(event) => selectPreset("to", event.target.value as PlaceId)}>
-                {PLACES.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
-              </select>
-            )}
           </label>
 
           <div className="map-pick-controls">
@@ -329,8 +310,8 @@ export default function Home() {
                 }
               : null
           }
-          selectedFrom={activeFrom.coordinates}
-          selectedTo={activeTo.coordinates}
+          selectedFrom={activeFrom?.coordinates ?? null}
+          selectedTo={activeTo?.coordinates ?? null}
           pickMode={pickMode}
           onMapPick={handleMapPick}
         />
