@@ -95,6 +95,17 @@ export default function MapView({
       });
 
       map.addLayer({
+        id: "route-casing",
+        type: "line",
+        source: "route",
+        paint: {
+          "line-color": "#111111",
+          "line-width": 10,
+          "line-opacity": 0.22,
+        },
+      });
+
+      map.addLayer({
         id: "route-eligible",
         type: "line",
         source: "route",
@@ -136,10 +147,32 @@ export default function MapView({
         type: "circle",
         source: "route-points",
         paint: {
-          "circle-radius": 7,
+          "circle-radius": 8,
           "circle-color": "#ffffff",
           "circle-stroke-color": "#111111",
           "circle-stroke-width": 3,
+        },
+      });
+
+      map.addLayer({
+        id: "route-start",
+        type: "circle",
+        source: "route-points",
+        filter: ["==", ["get", "role"], "from"],
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#111111",
+        },
+      });
+
+      map.addLayer({
+        id: "route-end",
+        type: "circle",
+        source: "route-points",
+        filter: ["==", ["get", "role"], "to"],
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#f5e642",
         },
       });
 
