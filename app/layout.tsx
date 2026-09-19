@@ -3,7 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CanWeDrive",
+  title: "Can We Cart",
   description: "Find streets and routes that work for LSVs and golf carts.",
 };
 
