@@ -23,7 +23,14 @@ jobs:
           for i in {1..24}; do
             headers="$(curl -sS -D - -o /tmp/health.json -w '\n%{http_code}' https://canwedrive.vercel.app/api/health || true)"
             code="$(printf '%s\n' "$headers" | tail -n1)"
-            version="$(printf '%s\n' "$headers" | awk 'BEGIN{IGNORECASE=1} /^x-canwedrive-version:/ {gsub("\r","",$2); print $2}')"
+            version="$(python - <<'PY'
+import json
+try:
+    print(json.load(open("/tmp/health.json")).get("version", ""))
+except Exception:
+    print("")
+PY
+            )"
             echo "attempt=$i http=$code version=$version"
             cat /tmp/health.json || true
             if [ "$code" = "200" ] && [ "$version" = "$EXPECTED_SHA" ]; then
