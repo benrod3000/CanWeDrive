@@ -414,9 +414,14 @@ export async function GET(request: NextRequest) {
       }>;
     };
 
-    if (osrm.code !== "Ok" || !osrm.routes?.[0]?.geometry?.coordinates?.length) {
+    if (osrm.code !== "Ok") {
       return NextResponse.json(
-        { error: "No driving route was found between those locations." },
+        {
+          error:
+            osrm.code === "NoRoute"
+              ? "No non-freeway driving route was found between those locations."
+              : "No driving route was found between those locations.",
+        },
         { status: 404 },
       );
     }
