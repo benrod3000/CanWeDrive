@@ -121,44 +121,16 @@ async function fetchGraphRoute(
   from: Coordinate,
   to: Coordinate,
 ): Promise<GraphRouteResult> {
-  // The publishable Supabase key is safe to expose to the application. Keep
-  // environment variables as the primary configuration, but use the project's
-  // public values as a production fallback so routing cannot silently fail when
-  // Vercel environment variables are missing.
-  const supabaseUrl =
-    process.env.SUPABASE_URL ??
-    process.env.NEXT_PUBLIC_SUPABASE_URL ??
-    "https://bsnspyjsirfayypcvpmc.supabase.co";
-  const supabaseKey =
-    process.env.SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
-
-  if (!supabaseUrl || !supabaseKey) {
-    return { rows: [], networkAvailable: false };
-  }
+  // This route is intentionally pinned to the CanWeDrive Supabase project.
+  // The publishable key is public by design and avoids accidentally inheriting
+  // unrelated Vercel environment variables from another project.
+  const supabaseUrl = "https://bsnspyjsirfayypcvpmc.supabase.co";
+  const supabaseKey = "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
 
   const headers = {
     apikey: supabaseKey,
     Authorization: `Bearer ${supabaseKey}`,
   };
-
-  const networkResponse = await fetch(
-    `${supabaseUrl}/rest/v1/road_edges?select=id&limit=1`,
-    {
-      headers,
-      signal: AbortSignal.timeout(5_000),
-    },
-  );
-
-  if (!networkResponse.ok) {
-    throw new Error(`Graph network lookup returned ${networkResponse.status}`);
-  }
-
-  const networkRows = (await networkResponse.json()) as Array<{ id: number }>;
-  if (!networkRows.length) {
-    return { rows: [], networkAvailable: false };
-  }
 
   const response = await fetch(
     `${supabaseUrl}/rest/v1/rpc/route_lsv_candidate`,
@@ -176,7 +148,7 @@ async function fetchGraphRoute(
         allow_unknown: true,
         snap_max_distance_meters: 500,
       }),
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(30_000),
     },
   );
 
