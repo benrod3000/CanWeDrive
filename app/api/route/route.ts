@@ -121,11 +121,18 @@ async function fetchGraphRoute(
   from: Coordinate,
   to: Coordinate,
 ): Promise<GraphRouteResult> {
+  // The publishable Supabase key is safe to expose to the application. Keep
+  // environment variables as the primary configuration, but use the project's
+  // public values as a production fallback so routing cannot silently fail when
+  // Vercel environment variables are missing.
   const supabaseUrl =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    process.env.SUPABASE_URL ??
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    "https://bsnspyjsirfayypcvpmc.supabase.co";
   const supabaseKey =
     process.env.SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
 
   if (!supabaseUrl || !supabaseKey) {
     return { rows: [], networkAvailable: false };
