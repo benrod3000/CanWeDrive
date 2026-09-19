@@ -28,7 +28,7 @@ export async function GET() {
 
     const rows = (await response.json()) as Array<{ id: number }>;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: rows.length > 0,
       service: "CanWeDrive",
       supabase: "connected",
@@ -36,6 +36,8 @@ export async function GET() {
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
       latencyMs: Date.now() - startedAt,
     });
+    response.headers.set("x-canwedrive-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
+    return response;
   } catch (error) {
     console.error("CanWeDrive health check failed", error);
 
