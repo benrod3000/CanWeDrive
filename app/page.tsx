@@ -23,6 +23,8 @@ type RouteResult = {
     segments: Array<{
       coordinates: Coordinate[];
       status: "eligible" | "blocked" | "unknown";
+      speedMph: number | null;
+      source: "OpenStreetMap" | null;
     }>;
     speedDataAvailable: boolean;
     terrain: {
