@@ -20,8 +20,8 @@ type RouteData = {
 
 type MapViewProps = {
   route: RouteData | null;
-  selectedFrom: Coordinate;
-  selectedTo: Coordinate;
+  selectedFrom: Coordinate | null;
+  selectedTo: Coordinate | null;
   pickMode: "from" | "to";
   onMapPick: (coordinates: Coordinate) => void;
 };
@@ -157,8 +157,8 @@ export default function MapView({
 function updateRouteLayers(
   map: maplibregl.Map,
   route: RouteData | null,
-  selectedFrom: Coordinate,
-  selectedTo: Coordinate,
+  selectedFrom: Coordinate | null,
+  selectedTo: Coordinate | null,
 ) {
   const routeSource = map.getSource("route") as maplibregl.GeoJSONSource | undefined;
   const pointSource = map.getSource("route-points") as maplibregl.GeoJSONSource | undefined;
@@ -184,22 +184,20 @@ function updateRouteLayers(
   pointSource.setData({
     type: "FeatureCollection",
     features: [
-      {
-        type: "Feature",
-        properties: { role: "from" },
-        geometry: {
-          type: "Point",
-          coordinates: selectedFrom,
-        },
-      },
-      {
-        type: "Feature",
-        properties: { role: "to" },
-        geometry: {
-          type: "Point",
-          coordinates: selectedTo,
-        },
-      },
+      ...(selectedFrom
+        ? [{
+            type: "Feature" as const,
+            properties: { role: "from" },
+            geometry: { type: "Point" as const, coordinates: selectedFrom },
+          }]
+        : []),
+      ...(selectedTo
+        ? [{
+            type: "Feature" as const,
+            properties: { role: "to" },
+            geometry: { type: "Point" as const, coordinates: selectedTo },
+          }]
+        : []),
     ],
   });
 
