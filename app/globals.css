@@ -196,9 +196,13 @@ input {
 
 .trip-stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.trip-stats.has-unknown {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .trip-stats span {
