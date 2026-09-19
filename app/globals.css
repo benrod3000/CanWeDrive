@@ -258,6 +258,56 @@ input:focus {
   letter-spacing: .12em;
 }
 
+.elevation-profile {
+  border: 2px solid var(--ink);
+  background: var(--white);
+  padding: 6px 7px 5px;
+}
+
+.elevation-profile svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.elevation-profile polygon {
+  fill: rgba(245, 230, 66, .48);
+}
+
+.elevation-profile polyline {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.elevation-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.climb-callout {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 7px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.climb-callout strong {
+  font-size: 17px;
+  letter-spacing: -.03em;
+}
+
 .speed-bars {
   display: grid;
   gap: 5px;
