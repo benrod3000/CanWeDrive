@@ -1,10 +1,17 @@
 type Coordinate = [number, number];
 
+export type TerrainProfilePoint = {
+  distanceMiles: number;
+  elevationFeet: number;
+};
+
 export type TerrainStats = {
   elevationGainFeet: number;
   elevationLossFeet: number;
   maxUphillGradePercent: number;
   maxDownhillGradePercent: number;
+  longestClimbMiles: number;
+  profile: TerrainProfilePoint[];
   source: "Open-Meteo / Copernicus DEM";
 };
 
@@ -110,11 +117,21 @@ export async function getRouteTerrain(
     let elevationLossMeters = 0;
     let maxUphillGrade = 0;
     let maxDownhillGrade = 0;
+    let cumulativeDistanceMeters = 0;
+    let climbStartMeters: number | null = null;
+    let longestClimbMeters = 0;
+    const profile: TerrainProfilePoint[] = [
+      {
+        distanceMiles: 0,
+        elevationFeet: Math.round(elevations[0] * 3.28084),
+      },
+    ];
 
     for (let i = 1; i < samples.length; i += 1) {
       const horizontalMeters = haversineMeters(samples[i - 1], samples[i]);
       if (horizontalMeters < 1) continue;
 
+      cumulativeDistanceMeters += horizontalMeters;
       const elevationDelta = elevations[i] - elevations[i - 1];
       const gradePercent = (elevationDelta / horizontalMeters) * 100;
 
@@ -126,6 +143,28 @@ export async function getRouteTerrain(
 
       if (gradePercent > maxUphillGrade) maxUphillGrade = gradePercent;
       if (gradePercent < maxDownhillGrade) maxDownhillGrade = gradePercent;
+
+      if (elevationDelta >= NOISE_THRESHOLD_METERS) {
+        if (climbStartMeters === null) climbStartMeters = cumulativeDistanceMeters - horizontalMeters;
+      } else if (climbStartMeters !== null) {
+        longestClimbMeters = Math.max(
+          longestClimbMeters,
+          cumulativeDistanceMeters - climbStartMeters - horizontalMeters,
+        );
+        climbStartMeters = null;
+      }
+
+      profile.push({
+        distanceMiles: cumulativeDistanceMeters / 1609.344,
+        elevationFeet: Math.round(elevations[i] * 3.28084),
+      });
+    }
+
+    if (climbStartMeters !== null) {
+      longestClimbMeters = Math.max(
+        longestClimbMeters,
+        cumulativeDistanceMeters - climbStartMeters,
+      );
     }
 
     return {
@@ -133,6 +172,8 @@ export async function getRouteTerrain(
       elevationLossFeet: Math.round(elevationLossMeters * 3.28084),
       maxUphillGradePercent: Math.round(maxUphillGrade * 10) / 10,
       maxDownhillGradePercent: Math.round(Math.abs(maxDownhillGrade) * 10) / 10,
+      longestClimbMiles: Math.round((longestClimbMeters / 1609.344) * 10) / 10,
+      profile,
       source: "Open-Meteo / Copernicus DEM",
     };
   } catch (error) {
