@@ -305,8 +305,8 @@ export default function Home() {
               ? {
                   geometry: route.geometry,
                   segments: route.segments,
-                  from: { coordinates: activeFrom.coordinates },
-                  to: { coordinates: activeTo.coordinates },
+                  from: { coordinates: activeFrom?.coordinates ?? [0, 0] },
+                  to: { coordinates: activeTo?.coordinates ?? [0, 0] },
                 }
               : null
           }
