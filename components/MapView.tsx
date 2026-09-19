@@ -211,7 +211,7 @@ export default function MapView({
           FIT ROUTE
         </button>
       </div>
-      <div ref={mapNode} className="map" aria-label="CanWeDrive route map" />
+      <div ref={mapNode} className="map" aria-label="Can We Cart route map" />
     </>
   );
 }
