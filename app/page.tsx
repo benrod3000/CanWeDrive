@@ -422,6 +422,16 @@ export default function Home() {
                   TOTAL ROUTE
                 </span>
                 <span>
+                  <strong>
+                    {route.durationMinutes === null
+                      ? "—"
+                      : route.durationMinutes >= 60
+                        ? `${Math.floor(route.durationMinutes / 60)}H ${route.durationMinutes % 60}M`
+                        : `${route.durationMinutes} MIN`}
+                  </strong>
+                  EST. TIME
+                </span>
+                <span>
                   <strong>{route.terrain ? `↑ ${route.terrain.elevationGainFeet} FT` : "—"}</strong>
                   CLIMB
                 </span>
@@ -505,6 +515,9 @@ export default function Home() {
               </div>
             </div>
 
+            <p className="eta-note">
+              Estimated using mapped speed limits. Streets without usable speed data are estimated at 25 MPH.
+            </p>
             <p className="terrain-note">
               {route.terrain
                 ? "Terrain is estimated from a 90 m elevation model. Hills can increase energy use, especially on longer climbs."
