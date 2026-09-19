@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPlace } from "@/lib/locations";
+import { getRouteTerrain } from "@/lib/terrain";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -161,7 +162,7 @@ async function fetchGraphRoute(
   return { rows, networkAvailable: true };
 }
 
-function buildGraphRouteResult(rows: GraphRouteRow[]) {
+async function buildGraphRouteResult(rows: GraphRouteRow[]) {
   const routeCoordinates: Coordinate[] = [];
   const segments: RouteSegment[] = [];
   let distanceMeters = 0;
@@ -207,6 +208,8 @@ function buildGraphRouteResult(rows: GraphRouteRow[]) {
   if (routeCoordinates.length < 2) return null;
 
   const distanceMiles = distanceMeters / 1609.344;
+  const terrain = await getRouteTerrain(routeCoordinates);
+
   return {
     status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
     blockedMiles: 0,
@@ -223,6 +226,7 @@ function buildGraphRouteResult(rows: GraphRouteRow[]) {
     },
     segments,
     speedDataAvailable: unknownMiles === 0,
+    terrain,
   };
 }
 
@@ -569,7 +573,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const graphResult = buildGraphRouteResult(graphRoute.rows);
+    const graphResult = await buildGraphRouteResult(graphRoute.rows);
 
     if (!graphResult) {
       return NextResponse.json(
