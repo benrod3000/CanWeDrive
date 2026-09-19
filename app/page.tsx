@@ -262,7 +262,7 @@ export default function Home() {
           <section className={`result ${status.tone}`}>
             <div className="status">{status.label}</div>
             <h2>{status.title}</h2>
-            <div className="trip-stats">
+            <div className={route.unknownMiles > 0 ? "trip-stats has-unknown" : "trip-stats"}>
               <span>
                 <strong>{route.distanceMiles} MI</strong>
                 ROUTE
