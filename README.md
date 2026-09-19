@@ -10,7 +10,7 @@ CanWeDrive currently covers three North County starting points:
 - Encinitas
 - Oceanside Harbor
 
-The route checker uses OSRM for the driving path and OpenStreetMap/Overpass for posted-speed tags. A route is treated conservatively:
+The route checker uses OSRM for the driving path and OpenStreetMap/Overpass for posted-speed tags. The repository also includes a Supabase/PostGIS lookup path for the stored road network. A route is treated conservatively:
 
 - **Eligible**: every matched road segment has mapped speed data at 35 MPH or less.
 - **Unknown**: any part of the route lacks usable posted-speed data.
