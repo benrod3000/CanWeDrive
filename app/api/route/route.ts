@@ -155,7 +155,8 @@ async function fetchGraphRoute(
   );
 
   if (!response.ok) {
-    throw new Error(`Graph routing returned ${response.status}`);
+    const detail = await response.text();
+    throw new Error(`Graph routing returned ${response.status}: ${detail.slice(0, 1000)}`);
   }
 
   const rows = (await response.json()) as GraphRouteRow[];
