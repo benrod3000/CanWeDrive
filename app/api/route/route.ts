@@ -508,19 +508,60 @@ export async function GET(request: NextRequest) {
   const fromId = request.nextUrl.searchParams.get("from") ?? "";
   const toId = request.nextUrl.searchParams.get("to") ?? "";
 
-  if (fromId === toId) {
+  const fromLon = Number(request.nextUrl.searchParams.get("fromLon"));
+  const fromLat = Number(request.nextUrl.searchParams.get("fromLat"));
+  const toLon = Number(request.nextUrl.searchParams.get("toLon"));
+  const toLat = Number(request.nextUrl.searchParams.get("toLat"));
+
+  const hasCoordinateRoute = [fromLon, fromLat, toLon, toLat].every(
+    (value) => Number.isFinite(value),
+  );
+
+  if (!hasCoordinateRoute && fromId === toId && fromId) {
     return NextResponse.json(
       { error: "Choose two different locations." },
       { status: 400 },
     );
   }
 
-  const from = getPlace(fromId);
-  const to = getPlace(toId);
+  const fromPlace = getPlace(fromId);
+  const toPlace = getPlace(toId);
+
+  const from = hasCoordinateRoute
+    ? {
+        id: "custom-from",
+        name:
+          request.nextUrl.searchParams.get("fromName") ??
+          fromPlace?.name ??
+          "Selected starting point",
+        coordinates: [fromLon, fromLat] as Coordinate,
+      }
+    : fromPlace;
+
+  const to = hasCoordinateRoute
+    ? {
+        id: "custom-to",
+        name:
+          request.nextUrl.searchParams.get("toName") ??
+          toPlace?.name ??
+          "Selected destination",
+        coordinates: [toLon, toLat] as Coordinate,
+      }
+    : toPlace;
 
   if (!from || !to) {
     return NextResponse.json(
-      { error: "Unknown starting point or destination." },
+      { error: "Choose a starting point and destination." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    from.coordinates[0] === to.coordinates[0] &&
+    from.coordinates[1] === to.coordinates[1]
+  ) {
+    return NextResponse.json(
+      { error: "Choose two different points." },
       { status: 400 },
     );
   }
