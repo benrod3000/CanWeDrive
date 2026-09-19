@@ -27,8 +27,8 @@ type MapViewProps = {
 };
 
 const ROUTE_COLORS = {
-  eligible: "#f5e642",
-  unknown: "#8e8e8e",
+  eligible: "#ff3b30",
+  unknown: "#00a6ff",
   blocked: "#111111",
 };
 
@@ -190,13 +190,30 @@ export default function MapView({
     };
   }, []);
 
+  function fitRoute() {
+    const map = mapRef.current;
+    if (!map || !routeRef.current) return;
+    const bounds = new maplibregl.LngLatBounds();
+    routeRef.current.geometry.coordinates.forEach((coordinate) => bounds.extend(coordinate));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 90, maxZoom: 15, duration: 700 });
+  }
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     map.getCanvas().style.cursor = "crosshair";
   }, [pickMode]);
 
-  return <div ref={mapNode} className="map" aria-label="CanWeDrive route map" />;
+  return (
+    <>
+      <div className="map-tools">
+        <button type="button" onClick={fitRoute} disabled={!route} aria-label="Fit route on map">
+          FIT ROUTE
+        </button>
+      </div>
+      <div ref={mapNode} className="map" aria-label="CanWeDrive route map" />
+    </>
+  );
 }
 
 function updateRouteLayers(
