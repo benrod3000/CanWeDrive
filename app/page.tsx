@@ -251,7 +251,13 @@ export default function Home() {
           return [x, y] as const;
         });
         const line = coordinates.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-        const area = `M ${coordinates[0][0].toFixed(1)} ${height - padY} L ${line.replace(/ /g, " L ")} L ${coordinates[coordinates.length - 1][0].toFixed(1)} ${height - padY} Z`;
+        const area = [
+          ...coordinates,
+          [coordinates[coordinates.length - 1][0], height - padY] as const,
+          [coordinates[0][0], height - padY] as const,
+        ]
+          .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+          .join(" ");
         return { line, area, minElevation, maxElevation, maxDistance };
       })()
     : null;
@@ -439,7 +445,7 @@ export default function Home() {
                 <div className="section-label">ELEVATION PROFILE</div>
                 <div className="elevation-profile">
                   <svg viewBox="0 0 640 150" role="img" aria-label="Route elevation profile">
-                    <polygon points={elevationPath.area.replace(/^M /, "").replace(/ Z$/, "")} />
+                    <polygon points={elevationPath.area} />
                     <polyline points={elevationPath.line} />
                   </svg>
                   <div className="elevation-labels">
