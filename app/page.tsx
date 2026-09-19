@@ -21,7 +21,7 @@ type RouteResult = {
       coordinates: Coordinate[];
     };
     segments: Array<{
-      coordinates: [Coordinate, Coordinate];
+      coordinates: Coordinate[];
       status: "eligible" | "blocked" | "unknown";
     }>;
     speedDataAvailable: boolean;
@@ -60,6 +60,10 @@ export default function Home() {
   const [fromQuery, setFromQuery] = useState("");
   const [toQuery, setToQuery] = useState("");
   const [searching, setSearching] = useState<"from" | "to" | null>(null);
+  const [searchResults, setSearchResults] = useState<{
+    type: "from" | "to";
+    results: Array<{ name: string; coordinates: Coordinate }>;
+  } | null>(null);
 
   const activeFrom = fromPoint;
   const activeTo = toPoint;
@@ -69,6 +73,7 @@ export default function Home() {
     if (!query) return;
     setSearching(type);
     setError("");
+    setSearchResults(null);
     try {
       const response = await fetch("/api/geocode?q=" + encodeURIComponent(query));
       const payload = (await response.json()) as {
@@ -78,15 +83,10 @@ export default function Home() {
       if (!response.ok || !payload.results?.length) {
         throw new Error(payload.error ?? "No matching address found.");
       }
-      const result = payload.results[0];
-      const point = { coordinates: result.coordinates, name: result.name };
-      if (type === "from") {
-        setFromPoint(point);
-        setFromQuery(result.name);
-        setPickMode("to");
-      } else {
-        setToPoint(point);
-        setToQuery(result.name);
+      const results = payload.results ?? [];
+      setSearchResults({ type, results: results.slice(0, 4) });
+      if (results.length === 1) {
+        selectSearchResult(type, results[0]);
       }
       setRoute(null);
     } catch (lookupError) {
@@ -94,6 +94,24 @@ export default function Home() {
     } finally {
       setSearching(null);
     }
+  }
+
+  function selectSearchResult(
+    type: "from" | "to",
+    result: { name: string; coordinates: Coordinate },
+  ) {
+    const point = { coordinates: result.coordinates, name: result.name };
+    if (type === "from") {
+      setFromPoint(point);
+      setFromQuery(result.name);
+      setPickMode("to");
+    } else {
+      setToPoint(point);
+      setToQuery(point.name);
+    }
+    setSearchResults(null);
+    setRoute(null);
+    setError("");
   }
 
   function handleMapPick(coordinates: Coordinate) {
@@ -104,6 +122,7 @@ export default function Home() {
 
     if (pickMode === "from") {
       setFromPoint(point);
+      setFromQuery(point.name);
       setPickMode("to");
     } else {
       setToPoint(point);
@@ -178,65 +197,116 @@ export default function Home() {
         </div>
 
         <div className="route-box">
-          <label>
-            <span>FROM</span>
-            <div className="address-row">
-              <input
-                value={fromQuery}
-                onChange={(event) => {
-                  setFromQuery(event.target.value);
-                  setFromPoint(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void searchAddress("from");
-                }}
-                placeholder="Enter starting address"
-              />
-              <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
-                {searching === "from" ? "..." : "SEARCH"}
-              </button>
+          <div className="address-stack">
+            <div className="route-step">
+              <div className="route-marker from-marker">A</div>
+              <label>
+                <span>FROM</span>
+                <div className="address-row">
+                  <input
+                    value={fromQuery}
+                    onChange={(event) => {
+                      setFromQuery(event.target.value);
+                      setFromPoint(null);
+                      setSearchResults(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void searchAddress("from");
+                    }}
+                    placeholder="Enter starting address"
+                    aria-label="Starting address"
+                  />
+                  <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
+                    {searching === "from" ? "..." : "SEARCH"}
+                  </button>
+                </div>
+              </label>
             </div>
-          </label>
 
-          <label>
-            <span>TO</span>
-            <div className="address-row">
-              <input
-                value={toQuery}
-                onChange={(event) => {
-                  setToQuery(event.target.value);
-                  setToPoint(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void searchAddress("to");
-                }}
-                placeholder="Enter destination address"
-              />
-              <button type="button" className="search-button" onClick={() => void searchAddress("to")} disabled={searching !== null}>
-                {searching === "to" ? "..." : "SEARCH"}
-              </button>
+            <div className="route-rail" aria-hidden="true" />
+
+            <div className="route-step">
+              <div className="route-marker to-marker">B</div>
+              <label>
+                <span>TO</span>
+                <div className="address-row">
+                  <input
+                    value={toQuery}
+                    onChange={(event) => {
+                      setToQuery(event.target.value);
+                      setToPoint(null);
+                      setSearchResults(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void searchAddress("to");
+                    }}
+                    placeholder="Enter destination address"
+                    aria-label="Destination address"
+                  />
+                  <button type="button" className="search-button" onClick={() => void searchAddress("to")} disabled={searching !== null}>
+                    {searching === "to" ? "..." : "SEARCH"}
+                  </button>
+                </div>
+              </label>
             </div>
-          </label>
+          </div>
 
-          <div className="map-pick-controls">
+          {searchResults && (
+            <div className="search-results" aria-label="Address search results">
+              <div className="search-results-label">CHOOSE A MATCH</div>
+              {searchResults.results.map((result, index) => (
+                <button
+                  key={result.name + result.coordinates.join(",")}
+                  type="button"
+                  className="search-result"
+                  onClick={() => selectSearchResult(searchResults.type, result)}
+                >
+                  <span>{index + 1}</span>
+                  <strong>{result.name}</strong>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="route-actions">
             <button
               className={pickMode === "from" ? "pick-button active" : "pick-button"}
               onClick={() => setPickMode("from")}
               type="button"
             >
-              PICK FROM ON MAP
+              PICK A ON MAP
             </button>
             <button
               className={pickMode === "to" ? "pick-button active" : "pick-button"}
               onClick={() => setPickMode("to")}
               type="button"
             >
-              PICK TO ON MAP
+              PICK B ON MAP
+            </button>
+            <button
+              className="swap-button"
+              type="button"
+              onClick={() => {
+                const nextFrom = toPoint;
+                const nextTo = fromPoint;
+                setFromPoint(nextFrom);
+                setToPoint(nextTo);
+                setFromQuery(nextFrom?.name ?? "");
+                setToQuery(nextTo?.name ?? "");
+                setSearchResults(null);
+                setRoute(null);
+                setPickMode("from");
+              }}
+              disabled={!fromPoint && !toPoint}
+              aria-label="Swap starting point and destination"
+              title="Swap FROM and TO"
+            >
+              SWAP A ↕ B
             </button>
           </div>
 
           <p className="map-help">
-            Enter an address and search, or use the map to drop a pin. Start with FROM, then TO.
+            Search an address, choose the matching place, or drop A/B directly on the map.
           </p>
 
           <button
