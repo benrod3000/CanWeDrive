@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPlace } from "@/lib/locations";
+import type { Database } from "@/lib/database.types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -129,16 +130,8 @@ async function fetchStoredSpeedWays(
 
   if (!response.ok) return [];
 
-  const rows = (await response.json()) as Array<{
-    id: number;
-    osm_id: number | null;
-    maxspeed_mph: number | null;
-    speed_source: string | null;
-    geom_geojson: {
-      type?: string;
-      coordinates?: Array<[number, number]>;
-    } | null;
-  }>;
+  const rows =
+    (await response.json()) as Database["public"]["Functions"]["road_segments_near_route"]["Returns"];
 
   return rows
     .filter(
