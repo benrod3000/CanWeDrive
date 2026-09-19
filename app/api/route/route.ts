@@ -145,7 +145,7 @@ async function fetchGraphRoute(
   );
 
   if (!networkResponse.ok) {
-    return { rows: [], networkAvailable: false };
+    throw new Error(`Graph network lookup returned ${networkResponse.status}`);
   }
 
   const networkRows = (await networkResponse.json()) as Array<{ id: number }>;
@@ -534,11 +534,7 @@ export async function GET(request: NextRequest) {
   try {
     let graphRoute: GraphRouteResult;
 
-    try {
-      graphRoute = await fetchGraphRoute(from.coordinates, to.coordinates);
-    } catch {
-      graphRoute = { rows: [], networkAvailable: false };
-    }
+    graphRoute = await fetchGraphRoute(from.coordinates, to.coordinates);
 
     if (graphRoute.networkAvailable) {
       const graphResult = buildGraphRouteResult(graphRoute.rows);
