@@ -32,18 +32,18 @@ type RouteResult = {
 
 const STATUS_COPY = {
   eligible: {
-    label: "LSV-FRIENDLY DATA",
-    title: "No freeways. Mapped route speeds stay at 35 MPH or less.",
+    label: "ROUTE FOUND",
+    title: "We found a route with mapped speeds of 35 MPH or less.",
     tone: "eligible",
   },
   unknown: {
-    label: "NOT FULLY VERIFIED",
-    title: "No freeways. Some streets have no usable posted-speed data.",
+    label: "PARTIALLY VERIFIED",
+    title: "We found a route, but some streets have no usable speed data.",
     tone: "unknown",
   },
   blocked: {
     label: "OVER 35 MPH",
-    title: "No freeways, but this route still includes a road mapped above 35 MPH.",
+    title: "This route includes a street mapped above the 35 MPH LSV limit.",
     tone: "blocked",
   },
 } as const;
@@ -262,31 +262,35 @@ export default function Home() {
           <section className={`result ${status.tone}`}>
             <div className="status">{status.label}</div>
             <h2>{status.title}</h2>
+            {route.status === "unknown" && (
+              <p className="result-explanation">
+                About {route.unknownMiles.toFixed(2)} miles of this route has no usable posted-speed data in OpenStreetMap. We cannot verify those streets from the map data we have. It does not mean the streets are illegal for an LSV.
+              </p>
+            )}
             <div className={route.unknownMiles > 0 ? "trip-stats has-unknown" : "trip-stats"}>
               <span>
-                <strong>{route.distanceMiles} MI</strong>
-                ROUTE
+                <strong>{route.distanceMiles.toFixed(1)} MI</strong>
+                TOTAL ROUTE
               </span>
               <span>
-                <strong>NO</strong>
+                <strong>0</strong>
                 FREEWAYS
               </span>
               {route.unknownMiles > 0 && (
                 <span>
-                  <strong>{route.unknownMiles} MI</strong>
-                  UNKNOWN
+                  <strong>{route.unknownMiles.toFixed(2)} MI</strong>
+                  NEEDS VERIFICATION
                 </span>
               )}
             </div>
-            <p>
-              {searchedFrom} → {searchedTo}
-            </p>
+            <div className="result-endpoints">
+              <div><span>FROM</span><strong>{searchedFrom}</strong></div>
+              <div><span>TO</span><strong>{searchedTo}</strong></div>
+            </div>
             <div className="notice">
               <strong>IMPORTANT</strong>
               <span>
-                Freeways are excluded from route planning. Speed data comes from
-                OpenStreetMap tags. Posted signs and local restrictions can
-                override the map. This is not a legal determination.
+                We exclude freeways from LSV route planning. Speed information comes from OpenStreetMap and may be missing or outdated. Local signs and restrictions can override the map data. Use this as a routing research tool, not as a legal determination.
               </span>
             </div>
           </section>
