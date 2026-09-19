@@ -1,0 +1,57 @@
+name: Import North County road graph
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y osmium-tool postgresql-client
+
+      - name: Check database secret
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "SUPABASE_DB_URL is not configured."
+            echo "Add the Supabase Postgres connection string as a GitHub Actions secret before running this workflow."
+            exit 1
+          fi
+
+      - name: Download Southern California OSM extract
+        run: |
+          curl -L --fail --retry 3             -o socal-latest.osm.pbf             https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf
+
+      - name: Extract North County
+        run: |
+          osmium extract             --bbox -117.40,32.98,-117.23,33.30             --strategy smart             socal-latest.osm.pbf             -o north-county.osm.pbf
+
+      - name: Keep road ways
+        run: |
+          osmium tags-filter             north-county.osm.pbf             w/highway             -o north-county-roads.osm.pbf
+
+      - name: Export routable ways
+        run: |
+          osmium export             north-county-roads.osm.pbf             --attributes=id,way_nodes             --geometry-types=linestring             --output-format=geojsonseq             -o roads.geojsonseq
+
+      - name: Build graph CSV
+        run: |
+          node scripts/build-road-import.mjs roads.geojsonseq data/road-import
+
+      - name: Load graph into Supabase
+        run: |
+          psql "$SUPABASE_DB_URL" -f scripts/load-road-graph.sql
+
+      - name: Show import manifest
+        run: cat data/road-import/manifest.json
