@@ -157,7 +157,7 @@ export default function Home() {
               </span>
               <span>
                 <strong>{route.durationMinutes} MIN</strong>
-                CAR ROUTE
+                EST. TIME
               </span>
             </div>
             <p>
@@ -166,8 +166,9 @@ export default function Home() {
             <div className="notice">
               <strong>IMPORTANT</strong>
               <span>
-                Speed data comes from OpenStreetMap tags. Posted signs and local
-                restrictions can override the map.
+                Freeways are excluded from route planning. Speed data comes from
+                OpenStreetMap tags. Posted signs and local restrictions can
+                override the map.
               </span>
             </div>
           </section>
