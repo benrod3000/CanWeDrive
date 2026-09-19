@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const LSV_MAX_SPEED_MPH = 35;
 const MATCH_DISTANCE_METERS = 35;
-const ROUTER_EXCLUDE_CLASSES = "motorway,trunk";
+const ROUTER_EXCLUDE_CLASSES = "motorway";
 
 type Coordinate = [number, number];
 
