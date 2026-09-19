@@ -267,7 +267,7 @@ export default function Home() {
       <aside className="panel">
         <div className="brand">
           <div className="eyebrow">NORTH COUNTY · CALIFORNIA</div>
-          <h1>CanWeDrive?</h1>
+          <h1>Can We Cart?</h1>
           <p>LSV routing without the guessing.</p>
         </div>
 
@@ -389,7 +389,7 @@ export default function Home() {
             onClick={checkRoute}
             disabled={loading}
           >
-            {loading ? "CHECKING ROUTE..." : "CAN WE DRIVE THERE?"}
+            {loading ? "CHECKING ROUTE..." : "CAN WE CART THERE?"}
           </button>
         </div>
 
@@ -539,7 +539,7 @@ export default function Home() {
         )}
 
         <footer>
-          <span>CanWeDrive v0.3</span>
+          <span>Can We Cart v0.3</span>
           <span>OSM + POSTGIS + PGROUTING</span>
         </footer>
       </aside>
