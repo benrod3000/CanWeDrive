@@ -4,6 +4,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const NORTH_COUNTY_VIEWBOX = "-117.40,33.30,-117.23,32.98";
+const NORTH_COUNTY_CITIES = [
+  "carlsbad",
+  "encinitas",
+  "oceanside",
+  "vista",
+  "san marcos",
+  "solana beach",
+  "del mar",
+  "escondido",
+];
 
 type NominatimResult = {
   display_name: string;
@@ -45,6 +55,19 @@ function clean(value: string) {
 
 function searchTerms(query: string) {
   return clean(query).split(/\s+/).filter((term) => term.length > 1);
+}
+
+function placeNameFallback(query: string) {
+  const normalized = clean(query);
+
+  for (const city of NORTH_COUNTY_CITIES) {
+    if (normalized.endsWith(` ${city}`) && normalized !== city) {
+      const name = normalized.slice(0, -(city.length + 1)).trim();
+      if (name.length >= 2) return name;
+    }
+  }
+
+  return null;
 }
 
 function formatResult(result: NominatimResult): SearchResult {
@@ -223,6 +246,16 @@ export async function GET(request: Request) {
     let rawResults = await searchNominatim(query, currentLocation, true);
     if (!rawResults.length) {
       rawResults = await searchNominatim(query, currentLocation, false);
+    }
+
+    if (!rawResults.length) {
+      const placeName = placeNameFallback(query);
+      if (placeName) {
+        rawResults = await searchNominatim(placeName, currentLocation, true);
+        if (!rawResults.length) {
+          rawResults = await searchNominatim(placeName, currentLocation, false);
+        }
+      }
     }
 
     const deduped = new Map<string, SearchResult>();
