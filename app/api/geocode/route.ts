@@ -204,6 +204,7 @@ export async function GET(request: Request) {
   const lon = Number(params.get("lon"));
 
   if (
+    !query &&
     params.has("lat") &&
     params.has("lon") &&
     Number.isFinite(lat) &&
