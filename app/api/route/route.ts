@@ -267,7 +267,7 @@ async function buildMultiStopRoute(stops: Array<{ name: string; coordinates: Coo
     const leg = await buildGraphRouteResult(graphRoute.rows, false);
     if (!leg) {
       throw new Error(
-        \`No LSV route was found between \${stops[index].name} and \${stops[index + 1].name}.\`,
+        `No LSV route was found between ${stops[index].name} and ${stops[index + 1].name}.`,
       );
     }
     legs.push(leg);
