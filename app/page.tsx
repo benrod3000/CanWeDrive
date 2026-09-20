@@ -64,6 +64,7 @@ export default function Home() {
   const [fromPoint, setFromPoint] = useState<SelectedPoint | null>(null);
   const [toPoint, setToPoint] = useState<SelectedPoint | null>(null);
   const [stopPoint, setStopPoint] = useState<SelectedPoint | null>(null);
+  const [stopEnabled, setStopEnabled] = useState(false);
   const [route, setRoute] = useState<RouteResult["route"] | null>(null);
   const [searchedFrom, setSearchedFrom] = useState("");
   const [searchedTo, setSearchedTo] = useState("");
@@ -85,7 +86,7 @@ export default function Home() {
 
   const activeFrom = fromPoint;
   const activeTo = toPoint;
-  const activeStop = stopPoint;
+  const activeStop = stopEnabled ? stopPoint : null;
 
   async function useMyLocation() {
     if (!navigator.geolocation) {
@@ -233,7 +234,7 @@ export default function Home() {
       return;
     }
 
-    const stops = [activeFrom, activeTo, ...(activeStop ? [activeStop] : [])];
+    const stops = activeStop ? [activeFrom, activeStop, activeTo] : [activeFrom, activeTo];
     for (let index = 1; index < stops.length; index += 1) {
       if (
         stops[index - 1].coordinates[0] === stops[index].coordinates[0] &&
@@ -415,30 +416,32 @@ export default function Home() {
               </label>
             </div>
 
-            <div className="route-step">
-              <div className="route-marker stop-marker">C</div>
-              <label>
-                <span>OPTIONAL STOP</span>
-                <div className="address-row">
-                  <input
-                    value={stopQuery}
-                    onChange={(event) => {
-                      setStopQuery(event.target.value);
-                      setStopPoint(null);
-                      setSearchResults(null);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void searchAddress("stop");
-                    }}
-                    placeholder="Add a stop"
-                    aria-label="Optional stop"
-                  />
-                  <button type="button" className="search-button" onClick={() => void searchAddress("stop")} disabled={searching !== null}>
-                    {searching === "stop" ? "..." : "SEARCH"}
-                  </button>
-                </div>
-              </label>
-            </div>
+            {stopEnabled && (
+              <div className="route-step">
+                <div className="route-marker stop-marker">C</div>
+                <label>
+                  <span>OPTIONAL STOP</span>
+                  <div className="address-row">
+                    <input
+                      value={stopQuery}
+                      onChange={(event) => {
+                        setStopQuery(event.target.value);
+                        setStopPoint(null);
+                        setSearchResults(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") void searchAddress("stop");
+                      }}
+                      placeholder="Add a stop before B"
+                      aria-label="Optional stop"
+                    />
+                    <button type="button" className="search-button" onClick={() => void searchAddress("stop")} disabled={searching !== null}>
+                      {searching === "stop" ? "..." : "SEARCH"}
+                    </button>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
 
           {searchResults && (
@@ -464,7 +467,7 @@ export default function Home() {
           <div className="route-actions">
             <button className={pickMode === "from" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("from")} type="button">PICK A</button>
             <button className={pickMode === "to" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("to")} type="button">PICK B</button>
-            <button className={pickMode === "stop" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("stop")} type="button">PICK C</button>
+            {stopEnabled && <button className={pickMode === "stop" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("stop")} type="button">PICK C</button>}
             <button
               className="swap-button"
               type="button"
@@ -503,7 +506,7 @@ export default function Home() {
           </div>
 
           <p className="map-help">
-            Search an address, choose a place, or pick A/B/C directly on the map.
+            Search an address, choose a place, or pick A/B directly on the map. Add C only if you need a stop.
           </p>
           {locationMessage && <div className="location-message">{locationMessage}</div>}
 
@@ -672,7 +675,7 @@ export default function Home() {
         </footer>
       </aside>
 
-      <section className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}${!route && pickMode === "stop" ? " pick-stop" : ""}`}>
+      <section className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}${!route && pickMode === "stop" && stopEnabled ? " pick-stop" : ""}`}>
         <MapView
           route={
             route
