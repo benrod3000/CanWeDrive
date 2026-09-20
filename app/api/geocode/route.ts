@@ -15,6 +15,17 @@ const NORTH_COUNTY_CITIES = [
   "escondido",
 ];
 
+const NORTH_COUNTY_CITY_POINTS: Array<{ name: string; coordinates: [number, number] }> = [
+  { name: "carlsbad", coordinates: [-117.3506, 33.1581] },
+  { name: "encinitas", coordinates: [-117.2919, 33.0370] },
+  { name: "oceanside", coordinates: [-117.3267, 33.1959] },
+  { name: "vista", coordinates: [-117.2425, 33.2000] },
+  { name: "san marcos", coordinates: [-117.1661, 33.1434] },
+  { name: "solana beach", coordinates: [-117.2713, 32.9912] },
+  { name: "del mar", coordinates: [-117.2653, 32.9595] },
+  { name: "escondido", coordinates: [-117.0842, 33.1192] },
+];
+
 type NominatimResult = {
   display_name: string;
   lat: string;
@@ -68,6 +79,16 @@ function placeNameFallback(query: string) {
   }
 
   return null;
+}
+
+function nearestNorthCountyCity(currentLocation: [number, number] | null) {
+  if (!currentLocation) return "carlsbad";
+
+  return NORTH_COUNTY_CITY_POINTS.reduce((closest, city) => {
+    const closestDistance = haversineMiles(currentLocation, closest.coordinates);
+    const cityDistance = haversineMiles(currentLocation, city.coordinates);
+    return cityDistance < closestDistance ? city : closest;
+  }).name;
 }
 
 function formatResult(result: NominatimResult): SearchResult {
@@ -271,6 +292,26 @@ export async function GET(request: Request) {
       rawResults = await searchNominatim(placeFallback.name, currentLocation, true);
       if (!rawResults.length) {
         rawResults = await searchNominatim(placeFallback.name, currentLocation, false);
+      }
+    }
+
+    // Business names such as "HomeGoods" are often indexed in OSM only when
+    // paired with a locality. If the plain place search misses, retry once
+    // using the nearest North County city instead of requiring the user to
+    // know the city name.
+    if (!rawResults.length && !placeFallback) {
+      const fallbackCity = nearestNorthCountyCity(currentLocation);
+      rawResults = await searchNominatim(
+        `${query} ${fallbackCity} California`,
+        currentLocation,
+        true,
+      );
+      if (!rawResults.length) {
+        rawResults = await searchNominatim(
+          `${query} ${fallbackCity} California`,
+          currentLocation,
+          false,
+        );
       }
     }
 
