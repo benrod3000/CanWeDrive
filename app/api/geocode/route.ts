@@ -35,17 +35,16 @@ function haversineMiles(a: [number, number], b: [number, number]) {
   const lat2 = toRadians(b[1]);
   const h =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) *
-      Math.cos(lat2) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 3958.7613 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
 function clean(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function searchTerms(query: string) {
+  return clean(query).split(/\s+/).filter((term) => term.length > 1);
 }
 
 function formatResult(result: NominatimResult): SearchResult {
@@ -55,10 +54,7 @@ function formatResult(result: NominatimResult): SearchResult {
     result.namedetails?.name ||
     result.display_name.split(",")[0];
 
-  const street = [address.house_number, address.road]
-    .filter(Boolean)
-    .join(" ");
-
+  const street = [address.house_number, address.road].filter(Boolean).join(" ");
   const locality =
     address.city ||
     address.town ||
@@ -72,14 +68,12 @@ function formatResult(result: NominatimResult): SearchResult {
     .filter((value, index, values) => values.indexOf(value) === index)
     .join(", ");
 
-  const category = result.category || result.type || "place";
-
   return {
     name,
     subtitle: subtitle || result.display_name,
     coordinates: [Number(result.lon), Number(result.lat)],
     score: result.importance ?? 0,
-    category,
+    category: result.category || result.type || "place",
   };
 }
 
@@ -89,33 +83,40 @@ function scoreResult(
   currentLocation: [number, number] | null,
 ) {
   const q = clean(query);
+  const terms = searchTerms(query);
   const candidateName = clean(
     [
       result.name,
       result.namedetails?.name,
       result.namedetails?.brand,
+      result.namedetails?.official_name,
       result.display_name.split(",")[0],
     ]
       .filter(Boolean)
       .join(" "),
   );
-
   const candidateAddress = clean(result.display_name);
   let score = (result.importance ?? 0) * 20;
 
-  if (candidateName === q) score += 80;
-  else if (candidateName.startsWith(q)) score += 45;
-  else if (candidateName.includes(q)) score += 25;
+  if (candidateName === q) score += 100;
+  else if (candidateName.startsWith(q)) score += 60;
+  else if (candidateName.includes(q)) score += 35;
 
-  if (candidateAddress.includes(q)) score += 18;
+  const matchedTerms = terms.filter(
+    (term) => candidateName.includes(term) || candidateAddress.includes(term),
+  ).length;
+  score += matchedTerms * 10;
+
+  if (terms.length && matchedTerms === terms.length) score += 25;
+  if (candidateAddress.includes(q)) score += 20;
 
   const category = result.category ?? "";
   const type = result.type ?? "";
   if (category === "shop" || category === "amenity" || category === "tourism") {
-    score += 8;
+    score += 10;
   }
   if (type === "house" || type === "building" || type === "residential") {
-    score += 4;
+    score += 5;
   }
 
   const coordinates: [number, number] = [Number(result.lon), Number(result.lat)];
@@ -135,18 +136,17 @@ async function searchNominatim(
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
   url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("limit", "8");
+  url.searchParams.set("limit", "10");
   url.searchParams.set("countrycodes", "us");
   url.searchParams.set("viewbox", NORTH_COUNTY_VIEWBOX);
   if (bounded) url.searchParams.set("bounded", "1");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("namedetails", "1");
-  url.searchParams.set("layer", "address,poi");
   url.searchParams.set("accept-language", "en-US");
 
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "Can We Cart/0.4 (LSV routing research tool)",
+      "User-Agent": "Can We Cart/0.5 (LSV routing research tool)",
       "Referer": "https://canwedrive.vercel.app/",
       "Accept-Language": "en-US,en;q=0.8",
     },
@@ -163,7 +163,12 @@ export async function GET(request: Request) {
   const lat = Number(params.get("lat"));
   const lon = Number(params.get("lon"));
 
-  if (params.has("lat") && params.has("lon") && Number.isFinite(lat) && Number.isFinite(lon)) {
+  if (
+    params.has("lat") &&
+    params.has("lon") &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lon)
+  ) {
     const url = new URL("https://nominatim.openstreetmap.org/reverse");
     url.searchParams.set("lat", String(lat));
     url.searchParams.set("lon", String(lon));
@@ -175,7 +180,7 @@ export async function GET(request: Request) {
     try {
       const response = await fetch(url, {
         headers: {
-          "User-Agent": "Can We Cart/0.4 (LSV routing research tool)",
+          "User-Agent": "Can We Cart/0.5 (LSV routing research tool)",
           "Referer": "https://canwedrive.vercel.app/",
           "Accept-Language": "en-US,en;q=0.8",
         },
@@ -183,7 +188,10 @@ export async function GET(request: Request) {
       });
 
       if (!response.ok) {
-        return NextResponse.json({ error: "Location lookup is temporarily unavailable." }, { status: 502 });
+        return NextResponse.json(
+          { error: "Location lookup is temporarily unavailable." },
+          { status: 502 },
+        );
       }
 
       const result = (await response.json()) as NominatimResult;
@@ -200,7 +208,10 @@ export async function GET(request: Request) {
   }
 
   if (!query) {
-    return NextResponse.json({ error: "Enter an address or place." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter an address or place." },
+      { status: 400 },
+    );
   }
 
   const currentLocation =
@@ -210,7 +221,6 @@ export async function GET(request: Request) {
 
   try {
     let rawResults = await searchNominatim(query, currentLocation, true);
-    // North County is the primary search area, but a strict bounding box should never make a valid address disappear.
     if (!rawResults.length) {
       rawResults = await searchNominatim(query, currentLocation, false);
     }
