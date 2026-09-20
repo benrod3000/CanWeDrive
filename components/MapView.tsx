@@ -60,10 +60,19 @@ export default function MapView({
     routeRef.current = route;
     selectedFromRef.current = selectedFrom;
     selectedToRef.current = selectedTo;
+    selectedStopRef.current = selectedStop;
+    userLocationRef.current = userLocation;
 
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    updateRouteLayers(map, route, selectedFrom, selectedTo);
+    updateRouteLayers(
+      map,
+      route,
+      selectedFrom,
+      selectedTo,
+      selectedStop,
+      userLocation,
+    );
   }, [route, selectedFrom, selectedTo, selectedStop, userLocation]);
 
   useEffect(() => {
@@ -335,10 +344,10 @@ function updateRouteLayers(
   if (!bounds.isEmpty()) {
     map.fitBounds(bounds, {
       padding: {
-        top: 70,
-        right: 70,
-        bottom: 70,
-        left: 70,
+        top: 55,
+        right: 55,
+        bottom: 55,
+        left: 55,
       },
       duration: 700,
       maxZoom: 16.5,
