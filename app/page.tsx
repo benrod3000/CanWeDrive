@@ -165,7 +165,7 @@ export default function Home() {
         "/api/geocode?q=" + encodeURIComponent(query) + locationParam,
       );
       const payload = (await response.json()) as {
-        results?: Array<{ name: string; coordinates: Coordinate }>;
+        results?: Array<{ name: string; subtitle?: string; coordinates: Coordinate }>;
         error?: string;
       };
       if (!response.ok || !payload.results?.length) {
@@ -185,7 +185,7 @@ export default function Home() {
   }
 
   function selectSearchResult(
-    type: "from" | "to",
+    type: "from" | "to" | "stop",
     result: { name: string; coordinates: Coordinate },
   ) {
     const point = { coordinates: result.coordinates, name: result.name };
@@ -376,12 +376,14 @@ export default function Home() {
                     placeholder="Enter starting address"
                     aria-label="Starting address"
                   />
-                  <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
-                    {searching === "from" ? "..." : "SEARCH"}
-                  </button>
-                  <button type="button" className="location-button" onClick={() => void useMyLocation()} disabled={locating}>
-                    {locating ? "LOCATING..." : "USE MY LOCATION"}
-                  </button>
+                  <div className="address-buttons">
+                    <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
+                      {searching === "from" ? "..." : "SEARCH"}
+                    </button>
+                    <button type="button" className="location-button" onClick={() => void useMyLocation()} disabled={locating}>
+                      {locating ? "LOCATING..." : "MY LOCATION"}
+                    </button>
+                  </div>
                 </div>
               </label>
             </div>
@@ -411,10 +413,12 @@ export default function Home() {
                   </button>
                 </div>
               </label>
-                        <div className="route-step">
+            </div>
+
+            <div className="route-step">
               <div className="route-marker stop-marker">C</div>
               <label>
-                <span>STOP</span>
+                <span>OPTIONAL STOP</span>
                 <div className="address-row">
                   <input
                     value={stopQuery}
@@ -426,7 +430,7 @@ export default function Home() {
                     onKeyDown={(event) => {
                       if (event.key === "Enter") void searchAddress("stop");
                     }}
-                    placeholder="Add an optional stop"
+                    placeholder="Add a stop"
                     aria-label="Optional stop"
                   />
                   <button type="button" className="search-button" onClick={() => void searchAddress("stop")} disabled={searching !== null}>
@@ -434,7 +438,6 @@ export default function Home() {
                   </button>
                 </div>
               </label>
-            </div>
             </div>
           </div>
 
