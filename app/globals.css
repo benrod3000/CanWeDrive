@@ -584,3 +584,96 @@ footer {
 .map-tools button { border: 2px solid var(--ink); background: var(--white); color: var(--ink); padding: 9px 11px; font-size: 10px; font-weight: 900; letter-spacing: .06em; box-shadow: 3px 3px 0 rgba(17,17,17,.35); cursor: pointer; }
 .map-tools button:hover:not(:disabled) { background: var(--yellow); transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(17,17,17,.35); }
 .map-tools button:disabled { opacity: .45; cursor: not-allowed; }
+
+
+/* Multi-stop and location controls */
+.address-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.address-buttons {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+}
+
+.location-button {
+  padding: 0 10px;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.location-button:hover:not(:disabled) {
+  background: var(--yellow);
+}
+
+.location-button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.stop-marker {
+  background: var(--white);
+}
+
+.route-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.remove-stop-button {
+  grid-column: 1 / -1;
+  padding: 9px 8px;
+  border: 2px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.remove-stop-button:hover {
+  background: #eeeae0;
+}
+
+.search-result div {
+  display: grid;
+  gap: 3px;
+}
+
+.search-result small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.location-message {
+  margin: -4px 0 0 34px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.map-wrap.pick-stop::after {
+  content: "PICK C ON MAP";
+}
+
+@media (max-width: 760px) {
+  .address-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .route-actions {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .swap-button {
+    grid-column: 1 / -1;
+  }
+}
