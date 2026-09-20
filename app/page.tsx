@@ -488,12 +488,26 @@ export default function Home() {
             >
               SWAP A ↕ B
             </button>
-            {stopPoint && (
+            {!stopEnabled && (
+              <button
+                className="add-stop-button"
+                type="button"
+                onClick={() => {
+                  setStopEnabled(true);
+                  setPickMode("stop");
+                  setRoute(null);
+                }}
+              >
+                + ADD OPTIONAL STOP
+              </button>
+            )}
+            {stopEnabled && (
               <button
                 className="remove-stop-button"
                 type="button"
                 onClick={() => {
                   setStopPoint(null);
+                  setStopEnabled(false);
                   setStopQuery("");
                   setSearchResults(null);
                   setRoute(null);
