@@ -246,10 +246,16 @@ export default function MapView({
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 55, maxZoom: 16.5, duration: 700 });
   }
 
+  const previousSelectionRef = useRef<string | null>(null);
+
   useEffect(() => {
     const map = mapRef.current;
-    const target = selectedTo ?? selectedStop ?? selectedFrom ?? userLocation;
-    if (!map || !target || routeRef.current) return;
+    const target = selectedTo ?? selectedStop ?? selectedFrom;
+    if (!map || !target) return;
+
+    const targetKey = target.join(",");
+    if (previousSelectionRef.current === targetKey) return;
+    previousSelectionRef.current = targetKey;
 
     const focus = () => {
       map.flyTo({
@@ -265,7 +271,7 @@ export default function MapView({
     } else {
       map.once("load", focus);
     }
-  }, [selectedFrom, selectedTo, selectedStop, userLocation]);
+  }, [selectedFrom, selectedTo, selectedStop]);
 
   useEffect(() => {
     const map = mapRef.current;
