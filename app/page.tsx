@@ -672,7 +672,7 @@ export default function Home() {
         </footer>
       </aside>
 
-      <section className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}`}>
+      <section className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}${!route && pickMode === "stop" ? " pick-stop" : ""}`}>
         <MapView
           route={
             route
