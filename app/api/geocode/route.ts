@@ -209,7 +209,11 @@ export async function GET(request: Request) {
       : null;
 
   try {
-    let rawResults = await searchNominatim(query, currentLocation, true);\n    // North County is the primary search area, but a strict bounding box should never make a valid address disappear.\n    if (!rawResults.length) {\n      rawResults = await searchNominatim(query, currentLocation, false);\n    }
+    let rawResults = await searchNominatim(query, currentLocation, true);
+    // North County is the primary search area, but a strict bounding box should never make a valid address disappear.
+    if (!rawResults.length) {
+      rawResults = await searchNominatim(query, currentLocation, false);
+    }
 
     const deduped = new Map<string, SearchResult>();
     for (const result of rawResults) {
