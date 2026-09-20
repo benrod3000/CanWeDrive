@@ -130,6 +130,7 @@ function scoreResult(
 async function searchNominatim(
   query: string,
   currentLocation: [number, number] | null,
+  bounded: boolean,
 ) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
