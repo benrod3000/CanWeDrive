@@ -162,7 +162,7 @@ async function fetchGraphRoute(
   return { rows, networkAvailable: true };
 }
 
-async function buildGraphRouteResult(rows: GraphRouteRow[]) {
+async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = true) {
   const routeCoordinates: Coordinate[] = [];
   const segments: RouteSegment[] = [];
   let distanceMeters = 0;
@@ -226,7 +226,7 @@ async function buildGraphRouteResult(rows: GraphRouteRow[]) {
     const assumedSpeed = segment.speedMph ?? 25;
     return minutes + (segmentMiles / Math.max(1, assumedSpeed)) * 60;
   }, 0);
-  const terrain = await getRouteTerrain(routeCoordinates);
+  const terrain = includeTerrain ? await getRouteTerrain(routeCoordinates) : null;
 
   return {
     status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
@@ -238,6 +238,81 @@ async function buildGraphRouteResult(rows: GraphRouteRow[]) {
     },
     distanceMiles: Math.round(distanceMiles * 10) / 10,
     durationMinutes: Math.round(estimatedMinutes),
+    geometry: {
+      type: "LineString" as const,
+      coordinates: routeCoordinates,
+    },
+    segments,
+    speedDataAvailable: unknownMiles === 0,
+    terrain,
+  };
+}
+
+async function buildMultiStopRoute(stops: Array<{ name: string; coordinates: Coordinate }>) {
+  if (stops.length < 2 || stops.length > 3) {
+    throw new Error("A route needs two or three stops.");
+  }
+
+  const legs = [];
+  for (let index = 0; index < stops.length - 1; index += 1) {
+    const graphRoute = await fetchGraphRoute(
+      stops[index].coordinates,
+      stops[index + 1].coordinates,
+    );
+
+    if (!graphRoute.networkAvailable) {
+      throw new Error("The LSV road network is not available yet.");
+    }
+
+    const leg = await buildGraphRouteResult(graphRoute.rows, false);
+    if (!leg) {
+      throw new Error(
+        \`No LSV route was found between \${stops[index].name} and \${stops[index + 1].name}.\`,
+      );
+    }
+    legs.push(leg);
+  }
+
+  const routeCoordinates: Coordinate[] = [];
+  const segments: RouteSegment[] = [];
+  let distanceMiles = 0;
+  let durationMinutes = 0;
+  let unknownMiles = 0;
+
+  for (const leg of legs) {
+    distanceMiles += leg.distanceMiles;
+    durationMinutes += leg.durationMinutes ?? 0;
+    unknownMiles += leg.unknownMiles;
+
+    for (const coordinate of leg.geometry.coordinates) {
+      const previous = routeCoordinates[routeCoordinates.length - 1];
+      if (
+        !previous ||
+        previous[0] !== coordinate[0] ||
+        previous[1] !== coordinate[1]
+      ) {
+        routeCoordinates.push(coordinate);
+      }
+    }
+
+    segments.push(...leg.segments);
+  }
+
+  const terrain =
+    routeCoordinates.length >= 2
+      ? await getRouteTerrain(routeCoordinates)
+      : null;
+
+  return {
+    status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
+    blockedMiles: 0,
+    unknownMiles,
+    alternativesConsidered: 1,
+    routerConstraints: {
+      excludedClasses: ["motorway", "motorway_link", "motorroad"],
+    },
+    distanceMiles: Math.round(distanceMiles * 10) / 10,
+    durationMinutes: Math.round(durationMinutes),
     geometry: {
       type: "LineString" as const,
       coordinates: routeCoordinates,
@@ -519,13 +594,6 @@ export async function GET(request: NextRequest) {
     (value) => Number.isFinite(value),
   );
 
-  if (!hasCoordinateRoute && fromId === toId && fromId) {
-    return NextResponse.json(
-      { error: "Choose two different locations." },
-      { status: 400 },
-    );
-  }
-
   const fromPlace = getPlace(fromId);
   const toPlace = getPlace(toId);
 
@@ -558,202 +626,106 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (
-    from.coordinates[0] === to.coordinates[0] &&
-    from.coordinates[1] === to.coordinates[1]
-  ) {
+  return routeStops(request, [from, to]);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = (await request.json()) as {
+      stops?: Array<{ name?: string; coordinates?: Coordinate }>;
+    };
+
+    const stops = (body.stops ?? []).map((stop) => ({
+      name: stop.name?.trim() || "Selected point",
+      coordinates: stop.coordinates,
+    }));
+
+    if (
+      stops.length < 2 ||
+      stops.length > 3 ||
+      stops.some(
+        (stop) =>
+          !Array.isArray(stop.coordinates) ||
+          stop.coordinates.length !== 2 ||
+          !stop.coordinates.every((value) => Number.isFinite(value)),
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Provide two or three valid route stops." },
+        { status: 400 },
+      );
+    }
+
+    return routeStops(
+      request,
+      stops as Array<{ name: string; coordinates: Coordinate }>,
+    );
+  } catch {
     return NextResponse.json(
-      { error: "Choose two different points." },
+      { error: "Invalid route request." },
       { status: 400 },
     );
   }
+}
 
-  const coordinates = `${from.coordinates.join(",")};${to.coordinates.join(",")}`;
-  const osrmUrl =
-    `https://router.project-osrm.org/route/v1/driving/${coordinates}` +
-    "?overview=full&geometries=geojson&steps=true&alternatives=true" +
-    `&exclude=${ROUTER_EXCLUDE_CLASSES}`;
+async function routeStops(
+  request: NextRequest,
+  stops: Array<{ name: string; coordinates: Coordinate }>,
+) {
+  for (let index = 1; index < stops.length; index += 1) {
+    if (
+      stops[index - 1].coordinates[0] === stops[index].coordinates[0] &&
+      stops[index - 1].coordinates[1] === stops[index].coordinates[1]
+    ) {
+      return NextResponse.json(
+        { error: "Choose different points for each stop." },
+        { status: 400 },
+      );
+    }
+  }
 
   const startedAt = Date.now();
 
   try {
-    let graphRoute: GraphRouteResult;
-
-    graphRoute = await fetchGraphRoute(from.coordinates, to.coordinates);
-
-    if (!graphRoute.networkAvailable) {
-      return NextResponse.json(
-        {
-          error:
-            "The LSV road network is not available yet. Please try again after the road data has loaded.",
-        },
-        { status: 503 },
-      );
-    }
-
-    const graphResult = await buildGraphRouteResult(graphRoute.rows);
-
-    if (!graphResult) {
-      return NextResponse.json(
-        {
-          error:
-            "No LSV route was found under the current road-network rules.",
-        },
-        { status: 404 },
-      );
-    }
+    const graphResult = await buildMultiStopRoute(stops);
 
     const response = NextResponse.json({
       vehicle: {
         id: "golf_cart_lsv",
         maxRoadSpeedMph: LSV_MAX_SPEED_MPH,
       },
-      from: {
-        id: from.id,
-        name: from.name,
-        coordinates: from.coordinates,
-      },
-      to: {
-        id: to.id,
-        name: to.name,
-        coordinates: to.coordinates,
-      },
+      from: stops[0],
+      to: stops[stops.length - 1],
+      stops,
       route: graphResult,
     });
-    response.headers.set("x-can-we-cart-version", process.env.VERCEL_GIT_COMMIT_SHA ?? "local");
-    response.headers.set("x-can-we-cart-route-ms", String(Date.now() - startedAt));
-    return response;
 
-    /* Ordinary car routing is intentionally not used as a fallback. */
-    /*
-    const osrmResponse = await fetch(osrmUrl, {
-      headers: {
-        "User-Agent": "Can We Cart/0.1 (open-source LSV route research tool)",
-      },
-      signal: AbortSignal.timeout(20_000),
-    });
-
-    if (!osrmResponse.ok) {
-      throw new Error(`Routing service returned ${osrmResponse.status}`);
-    }
-
-    const osrm = (await osrmResponse.json()) as {
-      code?: string;
-      routes?: Array<{
-        distance: number;
-        duration: number;
-        geometry?: {
-          coordinates?: Coordinate[];
-        };
-        legs?: Array<{
-          steps?: Array<{
-            name?: string;
-            distance: number;
-            duration: number;
-          }>;
-        }>;
-      }>;
-    };
-
-    const noRoute = osrm.code === "NoRoute";
-
-    if (osrm.code !== "Ok") {
-      return NextResponse.json(
-        {
-          error: noRoute
-            ? "No non-freeway driving route was found between those locations."
-            : "No driving route was found between those locations.",
-        },
-        { status: 404 },
-      );
-    }
-
-    const routeCandidates = (osrm.routes ?? []).filter(
-      (candidate) => candidate.geometry?.coordinates?.length,
+    response.headers.set(
+      "x-can-we-cart-version",
+      process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
     );
-
-    if (!routeCandidates.length) {
-      return NextResponse.json(
-        {
-          error: noRoute
-            ? "No non-freeway driving route was found between those locations."
-            : "No driving route geometry was returned.",
-        },
-        { status: 404 },
-      );
-    }
-
-    const evaluatedCandidates = [];
-
-    for (const candidate of routeCandidates) {
-      const routeCoordinates: Coordinate[] = candidate.geometry!
-        .coordinates!;
-
-      let speedWays: OverpassWay[] = [];
-
-      try {
-        speedWays = await fetchStoredSpeedWays({
-          type: "LineString",
-          coordinates: routeCoordinates,
-        });
-      } catch {
-        speedWays = [];
-      }
-
-      if (speedWays.length === 0) {
-        try {
-          speedWays = await fetchSpeedWays(routeCoordinates);
-        } catch {
-          speedWays = [];
-        }
-      }
-
-      evaluatedCandidates.push({
-        candidate,
-        routeCoordinates,
-        speedDataAvailable: speedWays.length > 0,
-        ...evaluateRoute(routeCoordinates, speedWays),
-      });
-    }
-
-    const statusRank = {
-      eligible: 0,
-      unknown: 1,
-      blocked: 2,
-    };
-
-    evaluatedCandidates.sort((a, b) => {
-      const statusDifference = statusRank[a.status] - statusRank[b.status];
-      if (statusDifference !== 0) return statusDifference;
-
-      const blockedDifference = a.blockedMiles - b.blockedMiles;
-      if (Math.abs(blockedDifference) > 0.05) return blockedDifference;
-
-      const unknownDifference = a.unknownMiles - b.unknownMiles;
-      if (Math.abs(unknownDifference) > 0.05) return unknownDifference;
-
-      return a.candidate.distance - b.candidate.distance;
-    });
-
-    const selected = evaluatedCandidates[0];
-    const route = selected.candidate;
-    const routeCoordinates = selected.routeCoordinates;
-
-    */
+    response.headers.set(
+      "x-can-we-cart-route-ms",
+      String(Date.now() - startedAt),
+    );
+    return response;
   } catch (error) {
     console.error("Can We Cart route error", {
       error: error instanceof Error ? error.message : String(error),
-      from: from.coordinates,
-      to: to.coordinates,
+      stops,
       elapsedMs: Date.now() - startedAt,
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
     });
 
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Routing is temporarily unavailable.";
+
     return NextResponse.json(
-      {
-        error: "Routing is temporarily unavailable. Try again in a moment.",
-      },
-      { status: 502 },
+      { error: message },
+      { status: message.startsWith("No LSV route") ? 404 : 502 },
     );
   }
 }
+
