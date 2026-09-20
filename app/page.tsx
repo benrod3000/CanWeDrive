@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MapView from "../components/MapView";
 
 type Coordinate = [number, number];
@@ -73,7 +73,7 @@ export default function Home() {
   const [locationMessage, setLocationMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pickMode, setPickMode] = useState<"from" | "to">("from");
+  const [pickMode, setPickMode] = useState<"from" | "to" | "stop">("from");
   const [fromQuery, setFromQuery] = useState("");
   const [toQuery, setToQuery] = useState("");
   const [stopQuery, setStopQuery] = useState("");
