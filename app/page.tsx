@@ -39,6 +39,7 @@ type RouteResult = {
   };
   from: { name: string; coordinates: Coordinate };
   to: { name: string; coordinates: Coordinate };
+  stops?: Array<{ name: string; coordinates: Coordinate }>;
 };
 
 const STATUS_COPY = {
@@ -62,31 +63,107 @@ const STATUS_COPY = {
 export default function Home() {
   const [fromPoint, setFromPoint] = useState<SelectedPoint | null>(null);
   const [toPoint, setToPoint] = useState<SelectedPoint | null>(null);
+  const [stopPoint, setStopPoint] = useState<SelectedPoint | null>(null);
   const [route, setRoute] = useState<RouteResult["route"] | null>(null);
   const [searchedFrom, setSearchedFrom] = useState("");
   const [searchedTo, setSearchedTo] = useState("");
+  const [searchedStops, setSearchedStops] = useState<SelectedPoint[]>([]);
+  const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationMessage, setLocationMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pickMode, setPickMode] = useState<"from" | "to">("from");
   const [fromQuery, setFromQuery] = useState("");
   const [toQuery, setToQuery] = useState("");
-  const [searching, setSearching] = useState<"from" | "to" | null>(null);
+  const [stopQuery, setStopQuery] = useState("");
+  const [searching, setSearching] = useState<"from" | "to" | "stop" | null>(null);
   const [searchResults, setSearchResults] = useState<{
-    type: "from" | "to";
-    results: Array<{ name: string; coordinates: Coordinate }>;
+    type: "from" | "to" | "stop";
+    results: Array<{ name: string; subtitle?: string; coordinates: Coordinate }>;
   } | null>(null);
 
   const activeFrom = fromPoint;
   const activeTo = toPoint;
+  const activeStop = stopPoint;
 
-  async function searchAddress(type: "from" | "to") {
-    const query = (type === "from" ? fromQuery : toQuery).trim();
+  async function useMyLocation() {
+    if (!navigator.geolocation) {
+      setLocationMessage("Location is not available in this browser.");
+      return;
+    }
+
+    setLocating(true);
+    setLocationMessage("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const coordinates: Coordinate = [
+          position.coords.longitude,
+          position.coords.latitude,
+        ];
+        setUserLocation(coordinates);
+        try {
+          const response = await fetch(
+            "/api/geocode?lat=" +
+              encodeURIComponent(String(coordinates[1])) +
+              "&lon=" +
+              encodeURIComponent(String(coordinates[0])),
+          );
+          const payload = (await response.json()) as { name?: string };
+          const point = {
+            coordinates,
+            name: payload.name ?? "Your current location",
+          };
+          setFromPoint(point);
+          setFromQuery(point.name);
+          setPickMode("to");
+          setRoute(null);
+        } catch {
+          setFromPoint({ coordinates, name: "Your current location" });
+          setFromQuery("Your current location");
+          setPickMode("to");
+          setRoute(null);
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocating(false);
+        setLocationMessage("Location access was unavailable. You can enter an address instead.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+    );
+  }
+
+  useEffect(() => {
+    if (!navigator.permissions?.query) return;
+    void navigator.permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((permission) => {
+        if (permission.state === "granted") void useMyLocation();
+      })
+      .catch(() => {});
+  }, []);
+
+  async function searchAddress(type: "from" | "to" | "stop") {
+    const query = (
+      type === "from" ? fromQuery : type === "to" ? toQuery : stopQuery
+    ).trim();
     if (!query) return;
     setSearching(type);
     setError("");
     setSearchResults(null);
     try {
-      const response = await fetch("/api/geocode?q=" + encodeURIComponent(query));
+      const locationParam = userLocation
+        ? "&lat=" +
+          encodeURIComponent(String(userLocation[1])) +
+          "&lon=" +
+          encodeURIComponent(String(userLocation[0]))
+        : "";
+      const response = await fetch(
+        "/api/geocode?q=" + encodeURIComponent(query) + locationParam,
+      );
       const payload = (await response.json()) as {
         results?: Array<{ name: string; coordinates: Coordinate }>;
         error?: string;
@@ -116,9 +193,12 @@ export default function Home() {
       setFromPoint(point);
       setFromQuery(result.name);
       setPickMode("to");
-    } else {
+    } else if (type === "to") {
       setToPoint(point);
       setToQuery(point.name);
+    } else {
+      setStopPoint(point);
+      setStopQuery(point.name);
     }
     setSearchResults(null);
     setRoute(null);
@@ -135,9 +215,12 @@ export default function Home() {
       setFromPoint(point);
       setFromQuery(point.name);
       setPickMode("to");
-    } else {
+    } else if (pickMode === "to") {
       setToPoint(point);
       setToQuery(point.name);
+    } else {
+      setStopPoint(point);
+      setStopQuery(point.name);
     }
 
     setRoute(null);
@@ -145,35 +228,36 @@ export default function Home() {
   }
 
   async function checkRoute() {
-    if (
-      activeFrom &&
-      activeTo &&
-      activeFrom.coordinates[0] === activeTo.coordinates[0] &&
-      activeFrom.coordinates[1] === activeTo.coordinates[1]
-    ) {
-      setError("Pick two different points.");
+    if (!activeFrom || !activeTo) {
+      setError("Enter a starting point and destination first.");
       return;
     }
 
-    if (!activeFrom || !activeTo) {
-      setError("Enter both a starting address and destination first.");
-      return;
+    const stops = [activeFrom, activeTo, ...(activeStop ? [activeStop] : [])];
+    for (let index = 1; index < stops.length; index += 1) {
+      if (
+        stops[index - 1].coordinates[0] === stops[index].coordinates[0] &&
+        stops[index - 1].coordinates[1] === stops[index].coordinates[1]
+      ) {
+        setError("Pick different points for each stop.");
+        return;
+      }
     }
 
     setLoading(true);
     setError("");
 
     try {
-      const params = new URLSearchParams({
-        fromLon: String(activeFrom.coordinates[0]),
-        fromLat: String(activeFrom.coordinates[1]),
-        toLon: String(activeTo.coordinates[0]),
-        toLat: String(activeTo.coordinates[1]),
-        fromName: activeFrom.name,
-        toName: activeTo.name,
+      const response = await fetch("/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stops: stops.map((stop) => ({
+            name: stop.name,
+            coordinates: stop.coordinates,
+          })),
+        }),
       });
-
-      const response = await fetch("/api/route?" + params.toString());
       const payload = (await response.json()) as RouteResult & {
         error?: string;
       };
@@ -185,6 +269,7 @@ export default function Home() {
       setRoute(payload.route);
       setSearchedFrom(payload.from.name);
       setSearchedTo(payload.to.name);
+      setSearchedStops(payload.stops?.slice(1, -1) ?? []);
     } catch (lookupError) {
       setRoute(null);
       setError(
@@ -294,6 +379,9 @@ export default function Home() {
                   <button type="button" className="search-button" onClick={() => void searchAddress("from")} disabled={searching !== null}>
                     {searching === "from" ? "..." : "SEARCH"}
                   </button>
+                  <button type="button" className="location-button" onClick={() => void useMyLocation()} disabled={locating}>
+                    {locating ? "LOCATING..." : "USE MY LOCATION"}
+                  </button>
                 </div>
               </label>
             </div>
@@ -323,6 +411,30 @@ export default function Home() {
                   </button>
                 </div>
               </label>
+                        <div className="route-step">
+              <div className="route-marker stop-marker">C</div>
+              <label>
+                <span>STOP</span>
+                <div className="address-row">
+                  <input
+                    value={stopQuery}
+                    onChange={(event) => {
+                      setStopQuery(event.target.value);
+                      setStopPoint(null);
+                      setSearchResults(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void searchAddress("stop");
+                    }}
+                    placeholder="Add an optional stop"
+                    aria-label="Optional stop"
+                  />
+                  <button type="button" className="search-button" onClick={() => void searchAddress("stop")} disabled={searching !== null}>
+                    {searching === "stop" ? "..." : "SEARCH"}
+                  </button>
+                </div>
+              </label>
+            </div>
             </div>
           </div>
 
@@ -337,27 +449,19 @@ export default function Home() {
                   onClick={() => selectSearchResult(searchResults.type, result)}
                 >
                   <span>{index + 1}</span>
-                  <strong>{result.name}</strong>
+                  <div>
+                    <strong>{result.name}</strong>
+                    {"subtitle" in result && result.subtitle ? <small>{result.subtitle}</small> : null}
+                  </div>
                 </button>
               ))}
             </div>
           )}
 
           <div className="route-actions">
-            <button
-              className={pickMode === "from" ? "pick-button active" : "pick-button"}
-              onClick={() => setPickMode("from")}
-              type="button"
-            >
-              PICK A ON MAP
-            </button>
-            <button
-              className={pickMode === "to" ? "pick-button active" : "pick-button"}
-              onClick={() => setPickMode("to")}
-              type="button"
-            >
-              PICK B ON MAP
-            </button>
+            <button className={pickMode === "from" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("from")} type="button">PICK A</button>
+            <button className={pickMode === "to" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("to")} type="button">PICK B</button>
+            <button className={pickMode === "stop" ? "pick-button active" : "pick-button"} onClick={() => setPickMode("stop")} type="button">PICK C</button>
             <button
               className="swap-button"
               type="button"
@@ -378,11 +482,27 @@ export default function Home() {
             >
               SWAP A ↕ B
             </button>
+            {stopPoint && (
+              <button
+                className="remove-stop-button"
+                type="button"
+                onClick={() => {
+                  setStopPoint(null);
+                  setStopQuery("");
+                  setSearchResults(null);
+                  setRoute(null);
+                  setPickMode("to");
+                }}
+              >
+                REMOVE C
+              </button>
+            )}
           </div>
 
           <p className="map-help">
-            Search an address, choose the matching place, or drop A/B directly on the map.
+            Search an address, choose a place, or pick A/B/C directly on the map.
           </p>
+          {locationMessage && <div className="location-message">{locationMessage}</div>}
 
           <button
             className="drive-button"
@@ -528,6 +648,9 @@ export default function Home() {
 
             <div className="result-endpoints">
               <div><span>FROM</span><strong>{searchedFrom}</strong></div>
+              {searchedStops.map((stop, index) => (
+                <div key={stop.name + index}><span>STOP {String.fromCharCode(67 + index - 1)}</span><strong>{stop.name}</strong></div>
+              ))}
               <div><span>TO</span><strong>{searchedTo}</strong></div>
             </div>
 
@@ -560,6 +683,8 @@ export default function Home() {
           }
           selectedFrom={activeFrom?.coordinates ?? null}
           selectedTo={activeTo?.coordinates ?? null}
+          selectedStop={activeStop?.coordinates ?? null}
+          userLocation={userLocation}
           pickMode={pickMode}
           onMapPick={handleMapPick}
         />
