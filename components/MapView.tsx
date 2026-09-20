@@ -76,6 +76,21 @@ export default function MapView({
   }, [route, selectedFrom, selectedTo, selectedStop, userLocation]);
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !route || !map.isStyleLoaded()) return;
+
+    const bounds = new maplibregl.LngLatBounds();
+    route.geometry.coordinates.forEach((coordinate) => bounds.extend(coordinate));
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, {
+        padding: 55,
+        maxZoom: 16.5,
+        duration: 700,
+      });
+    }
+  }, [route]);
+
+  useEffect(() => {
     if (!mapNode.current) return;
 
     const map = new maplibregl.Map({
@@ -246,20 +261,37 @@ export default function MapView({
     if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 55, maxZoom: 16.5, duration: 700 });
   }
 
-  const previousSelectionRef = useRef<string | null>(null);
+  const previousSelectionsRef = useRef<{
+    from: string | null;
+    to: string | null;
+    stop: string | null;
+  }>({ from: null, to: null, stop: null });
 
   useEffect(() => {
-    const map = mapRef.current;
-    const target = selectedTo ?? selectedStop ?? selectedFrom;
-    if (!map || !target) return;
+    const previous = previousSelectionsRef.current;
+    const current = {
+      from: selectedFrom ? selectedFrom.join(",") : null,
+      to: selectedTo ? selectedTo.join(",") : null,
+      stop: selectedStop ? selectedStop.join(",") : null,
+    };
 
-    const targetKey = target.join(",");
-    if (previousSelectionRef.current === targetKey) return;
-    previousSelectionRef.current = targetKey;
+    const changedTarget =
+      current.from !== previous.from
+        ? selectedFrom
+        : current.to !== previous.to
+          ? selectedTo
+          : current.stop !== previous.stop
+            ? selectedStop
+            : null;
+
+    previousSelectionsRef.current = current;
+
+    const map = mapRef.current;
+    if (!map || !changedTarget) return;
 
     const focus = () => {
       map.flyTo({
-        center: target,
+        center: changedTarget,
         zoom: Math.max(map.getZoom(), 14.5),
         duration: 700,
         essential: true,
@@ -367,23 +399,4 @@ function updateRouteLayers(
     });
   }
 
-  if (!route) return;
-
-  const bounds = new maplibregl.LngLatBounds();
-  for (const coordinate of route.geometry.coordinates) {
-    bounds.extend(coordinate);
-  }
-
-  if (!bounds.isEmpty()) {
-    map.fitBounds(bounds, {
-      padding: {
-        top: 55,
-        right: 55,
-        bottom: 55,
-        left: 55,
-      },
-      duration: 700,
-      maxZoom: 16.5,
-    });
-  }
 }
