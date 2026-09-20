@@ -193,6 +193,7 @@ async function searchNominatim(
   query: string,
   currentLocation: [number, number] | null,
   bounded: boolean,
+  poiOnly = false,
 ) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
@@ -201,6 +202,7 @@ async function searchNominatim(
   url.searchParams.set("countrycodes", "us");
   url.searchParams.set("viewbox", NORTH_COUNTY_VIEWBOX);
   if (bounded) url.searchParams.set("bounded", "1");
+  if (poiOnly) url.searchParams.set("layer", "poi");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("namedetails", "1");
   url.searchParams.set("accept-language", "en-US");
@@ -216,6 +218,27 @@ async function searchNominatim(
 
   if (!response.ok) throw new Error("Geocoder unavailable.");
   return (await response.json()) as NominatimResult[];
+}
+
+async function searchBusinessName(
+  query: string,
+  currentLocation: [number, number] | null,
+) {
+  const fallbackCity = nearestNorthCountyCity(currentLocation);
+  const queries = [
+    { text: query, bounded: true, poiOnly: true },
+    { text: query, bounded: false, poiOnly: true },
+    { text: `${query} ${fallbackCity} California`, bounded: true, poiOnly: true },
+    { text: `${query} ${fallbackCity} California`, bounded: false, poiOnly: true },
+  ];
+
+  const results = await Promise.all(
+    queries.map(({ text, bounded, poiOnly }) =>
+      searchNominatim(text, currentLocation, bounded, poiOnly),
+    ),
+  );
+
+  return results.flat();
 }
 
 export async function GET(request: Request) {
@@ -282,37 +305,23 @@ export async function GET(request: Request) {
       : null;
 
   try {
-    let rawResults = await searchNominatim(query, currentLocation, true);
-    if (!rawResults.length) {
-      rawResults = await searchNominatim(query, currentLocation, false);
-    }
-
     const placeFallback = placeNameFallback(query);
-    if (!rawResults.length && placeFallback) {
+    let rawResults: NominatimResult[] = [];
+
+    if (placeFallback) {
       rawResults = await searchNominatim(placeFallback.name, currentLocation, true);
       if (!rawResults.length) {
         rawResults = await searchNominatim(placeFallback.name, currentLocation, false);
       }
-    }
-
-    // Business names such as "HomeGoods" are often indexed in OSM only when
-    // paired with a locality. If the plain place search misses, retry once
-    // using the nearest North County city instead of requiring the user to
-    // know the city name.
-    if (!rawResults.length && !placeFallback) {
-      const fallbackCity = nearestNorthCountyCity(currentLocation);
-      rawResults = await searchNominatim(
-        `${query} ${fallbackCity} California`,
-        currentLocation,
-        true,
-      );
-      if (!rawResults.length) {
-        rawResults = await searchNominatim(
-          `${query} ${fallbackCity} California`,
-          currentLocation,
-          false,
-        );
-      }
+    } else {
+      // Search ordinary addresses first, then run a dedicated POI pass for
+      // business names. Do not let an unrelated first result suppress the
+      // locality/POI retries.
+      const [addressResults, businessResults] = await Promise.all([
+        searchNominatim(query, currentLocation, true),
+        searchBusinessName(query, currentLocation),
+      ]);
+      rawResults = [...addressResults, ...businessResults];
     }
 
     const preferredCity = placeFallback?.city ?? null;
