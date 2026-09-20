@@ -248,6 +248,33 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
+    const target = selectedTo ?? selectedStop ?? selectedFrom ?? userLocation;
+    if (!map || !target || routeRef.current) return;
+
+    const focus = () => {
+      map.flyTo({
+        center: target,
+        zoom: Math.max(map.getZoom(), 14.5),
+        duration: 700,
+        essential: true,
+      });
+    };
+
+    if (map.isStyleLoaded()) {
+      focus();
+    } else {
+      map.once("load", focus);
+    }
+  }, [selectedFrom, selectedTo, selectedStop, userLocation]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.getCanvas().style.cursor = "crosshair";
+  }, [pickMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map) return;
     map.getCanvas().style.cursor = "crosshair";
   }, [pickMode]);
