@@ -143,15 +143,6 @@ async function searchNominatim(
   url.searchParams.set("layer", "address,poi");
   url.searchParams.set("accept-language", "en-US");
 
-  if (currentLocation) {
-    const [lon, lat] = currentLocation;
-    const delta = 0.08;
-    url.searchParams.set(
-      "viewbox",
-      [lon - delta, lat + delta, lon + delta, lat - delta].join(","),
-    );
-  }
-
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Can We Cart/0.4 (LSV routing research tool)",
