@@ -63,7 +63,7 @@ function placeNameFallback(query: string) {
   for (const city of NORTH_COUNTY_CITIES) {
     if (normalized.endsWith(` ${city}`) && normalized !== city) {
       const name = normalized.slice(0, -(city.length + 1)).trim();
-      if (name.length >= 2) return name;
+      if (name.length >= 2) return { name, city };
     }
   }
 
@@ -104,6 +104,7 @@ function scoreResult(
   query: string,
   result: NominatimResult,
   currentLocation: [number, number] | null,
+  preferredCity: string | null = null,
 ) {
   const q = clean(query);
   const terms = searchTerms(query);
@@ -120,6 +121,22 @@ function scoreResult(
   );
   const candidateAddress = clean(result.display_name);
   let score = (result.importance ?? 0) * 20;
+
+  if (preferredCity) {
+    const city = clean(preferredCity);
+    const address = result.address ?? {};
+    const resultCity = clean(
+      address.city ||
+        address.town ||
+        address.village ||
+        address.suburb ||
+        address.neighbourhood ||
+        "",
+    );
+
+    if (resultCity === city || candidateAddress.includes(city)) score += 90;
+    else score -= 35;
+  }
 
   if (candidateName === q) score += 100;
   else if (candidateName.startsWith(q)) score += 60;
@@ -248,16 +265,15 @@ export async function GET(request: Request) {
       rawResults = await searchNominatim(query, currentLocation, false);
     }
 
-    if (!rawResults.length) {
-      const placeName = placeNameFallback(query);
-      if (placeName) {
-        rawResults = await searchNominatim(placeName, currentLocation, true);
-        if (!rawResults.length) {
-          rawResults = await searchNominatim(placeName, currentLocation, false);
-        }
+    const placeFallback = placeNameFallback(query);
+    if (!rawResults.length && placeFallback) {
+      rawResults = await searchNominatim(placeFallback.name, currentLocation, true);
+      if (!rawResults.length) {
+        rawResults = await searchNominatim(placeFallback.name, currentLocation, false);
       }
     }
 
+    const preferredCity = placeFallback?.city ?? null;
     const deduped = new Map<string, SearchResult>();
     for (const result of rawResults) {
       const formatted = formatResult(result);
@@ -271,7 +287,7 @@ export async function GET(request: Request) {
 
       const scored = {
         ...formatted,
-        score: scoreResult(query, result, currentLocation),
+        score: scoreResult(query, result, currentLocation, preferredCity),
       };
 
       const existing = deduped.get(key);
