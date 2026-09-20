@@ -137,7 +137,7 @@ async function searchNominatim(
   url.searchParams.set("limit", "8");
   url.searchParams.set("countrycodes", "us");
   url.searchParams.set("viewbox", NORTH_COUNTY_VIEWBOX);
-  url.searchParams.set("bounded", "1");
+  if (bounded) url.searchParams.set("bounded", "1");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("namedetails", "1");
   url.searchParams.set("layer", "address,poi");
@@ -208,7 +208,7 @@ export async function GET(request: Request) {
       : null;
 
   try {
-    const rawResults = await searchNominatim(query, currentLocation);
+    let rawResults = await searchNominatim(query, currentLocation, true);\n    // North County is the primary search area, but a strict bounding box should never make a valid address disappear.\n    if (!rawResults.length) {\n      rawResults = await searchNominatim(query, currentLocation, false);\n    }
 
     const deduped = new Map<string, SearchResult>();
     for (const result of rawResults) {
