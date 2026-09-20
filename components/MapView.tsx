@@ -22,7 +22,9 @@ type MapViewProps = {
   route: RouteData | null;
   selectedFrom: Coordinate | null;
   selectedTo: Coordinate | null;
-  pickMode: "from" | "to";
+  selectedStop: Coordinate | null;
+  userLocation: Coordinate | null;
+  pickMode: "from" | "to" | "stop";
   onMapPick: (coordinates: Coordinate) => void;
 };
 
@@ -36,6 +38,8 @@ export default function MapView({
   route,
   selectedFrom,
   selectedTo,
+  selectedStop,
+  userLocation,
   pickMode,
   onMapPick,
 }: MapViewProps) {
@@ -45,6 +49,8 @@ export default function MapView({
   const routeRef = useRef(route);
   const selectedFromRef = useRef(selectedFrom);
   const selectedToRef = useRef(selectedTo);
+  const selectedStopRef = useRef(selectedStop);
+  const userLocationRef = useRef(userLocation);
 
   useEffect(() => {
     onMapPickRef.current = onMapPick;
@@ -58,7 +64,7 @@ export default function MapView({
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     updateRouteLayers(map, route, selectedFrom, selectedTo);
-  }, [route, selectedFrom, selectedTo]);
+  }, [route, selectedFrom, selectedTo, selectedStop, userLocation]);
 
   useEffect(() => {
     if (!mapNode.current) return;
@@ -67,7 +73,7 @@ export default function MapView({
       container: mapNode.current,
       style: "https://tiles.openfreemap.org/styles/liberty",
       center: [-117.318, 33.097],
-      zoom: 11.2,
+      zoom: 12.2,
     });
 
     mapRef.current = map;
@@ -79,6 +85,14 @@ export default function MapView({
 
     map.on("load", () => {
       map.addSource("route", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: [],
+        },
+      });
+
+      map.addSource("user-location", {
         type: "geojson",
         data: {
           type: "FeatureCollection",
@@ -143,6 +157,18 @@ export default function MapView({
       });
 
       map.addLayer({
+        id: "user-location",
+        type: "circle",
+        source: "user-location",
+        paint: {
+          "circle-radius": 7,
+          "circle-color": "#ffffff",
+          "circle-stroke-color": "#007aff",
+          "circle-stroke-width": 3,
+        },
+      });
+
+      map.addLayer({
         id: "route-start-end",
         type: "circle",
         source: "route-points",
@@ -176,11 +202,24 @@ export default function MapView({
         },
       });
 
+      map.addLayer({
+        id: "route-stop",
+        type: "circle",
+        source: "route-points",
+        filter: ["==", ["get", "role"], "stop"],
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#ffffff",
+        },
+      });
+
       updateRouteLayers(
         map,
         routeRef.current,
         selectedFromRef.current,
         selectedToRef.current,
+        selectedStopRef.current,
+        userLocationRef.current,
       );
     });
 
@@ -195,7 +234,7 @@ export default function MapView({
     if (!map || !routeRef.current) return;
     const bounds = new maplibregl.LngLatBounds();
     routeRef.current.geometry.coordinates.forEach((coordinate) => bounds.extend(coordinate));
-    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 90, maxZoom: 15, duration: 700 });
+    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 55, maxZoom: 16.5, duration: 700 });
   }
 
   useEffect(() => {
@@ -221,6 +260,8 @@ function updateRouteLayers(
   route: RouteData | null,
   selectedFrom: Coordinate | null,
   selectedTo: Coordinate | null,
+  selectedStop: Coordinate | null,
+  userLocation: Coordinate | null,
 ) {
   const routeSource = map.getSource("route") as maplibregl.GeoJSONSource | undefined;
   const pointSource = map.getSource("route-points") as maplibregl.GeoJSONSource | undefined;
@@ -253,6 +294,13 @@ function updateRouteLayers(
             geometry: { type: "Point" as const, coordinates: selectedFrom },
           }]
         : []),
+      ...(selectedStop
+        ? [{
+            type: "Feature" as const,
+            properties: { role: "stop" },
+            geometry: { type: "Point" as const, coordinates: selectedStop },
+          }]
+        : []),
       ...(selectedTo
         ? [{
             type: "Feature" as const,
@@ -262,6 +310,20 @@ function updateRouteLayers(
         : []),
     ],
   });
+
+  const locationSource = map.getSource("user-location") as maplibregl.GeoJSONSource | undefined;
+  if (locationSource) {
+    locationSource.setData({
+      type: "FeatureCollection",
+      features: userLocation
+        ? [{
+            type: "Feature" as const,
+            properties: { role: "current" },
+            geometry: { type: "Point" as const, coordinates: userLocation },
+          }]
+        : [],
+    });
+  }
 
   if (!route) return;
 
@@ -279,7 +341,7 @@ function updateRouteLayers(
         left: 70,
       },
       duration: 700,
-      maxZoom: 14.5,
+      maxZoom: 16.5,
     });
   }
 }
