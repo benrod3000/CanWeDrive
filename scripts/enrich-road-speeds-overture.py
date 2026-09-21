@@ -9,6 +9,7 @@ RELEASE=os.getenv('OVERTURE_RELEASE','2026-08-19.0')
 PARQUET='s3://overturemaps-us-west-2/release/'+RELEASE+'/theme=transportation/type=segment/*'
 BBOX=os.getenv('OVERTURE_BBOX','-117.5355,32.9732,-117.2123,33.4022')
 MATCH_M=float(os.getenv('OVERTURE_MATCH_METERS','20'))
+MATCH_DEG=MATCH_M/111000.0
 
 def mph(v,u):
     if v is None: return None
@@ -59,26 +60,32 @@ def main():
             cur.execute("""CREATE TEMP TABLE overture_speed_candidates(
               overture_id text, geom extensions.geometry(LineString,4326),
               maxspeed_mph numeric, name text, source_dataset text) ON COMMIT DROP""")
-            # Batch the remote inserts. Psycopg 3 uses pipeline mode internally
-            # for executemany(), avoiding one client/server round-trip per candidate.
             cur.executemany(
                 """INSERT INTO overture_speed_candidates
                   VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s)""",
                 candidates
             )
+            # The candidate table is small enough to index. The bbox predicate below
+            # also lets the existing road_edges geometry GiST index prune the 244k
+            # unknown edges before exact distance/name matching.
+            cur.execute("""CREATE INDEX overture_speed_candidates_geom_gix
+              ON overture_speed_candidates USING GIST (geom)""")
+            cur.execute("""ANALYZE overture_speed_candidates""")
             cur.execute("""SELECT count(*) FROM public.road_edges
               WHERE maxspeed_mph IS NULL AND lsv_status='unknown'""")
             before=cur.fetchone()[0]
-            cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
-              extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
-              FROM public.road_edges e JOIN overture_speed_candidates c
-              ON extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
+            match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
+              ON e.geom && extensions.ST_Expand(c.geom,%s)
+              AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
               WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'
               AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
-                   OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))
+                   OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))"""
+            cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
+              extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
+              """ + match_sql + """
               ORDER BY e.id,
                 CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
-                  AND lower(trim(e.name))=lower(trim(c.name)) THEN 0 ELSE 1 END, d""",(MATCH_M,))
+                  AND lower(trim(e.name))=lower(trim(c.name)) THEN 0 ELSE 1 END, d""",(MATCH_DEG,MATCH_M))
             matches=cur.fetchall()
             print('Unknown edges before:',before)
             print('Unknown edges matched:',len(matches))
@@ -95,16 +102,12 @@ def main():
               lsv_reason=CASE WHEN m.maxspeed_mph<=35 THEN 'Overture speed limit <= 35 mph' ELSE 'Overture speed limit > 35 mph' END,
               updated_at=%s
               FROM (SELECT DISTINCT ON(e2.id) e2.id,c2.maxspeed_mph,c2.source_dataset
-                FROM public.road_edges e2 JOIN overture_speed_candidates c2
-                ON extensions.ST_DWithin(e2.geom::extensions.geography,c2.geom::extensions.geography,%s)
-                WHERE e2.maxspeed_mph IS NULL AND e2.lsv_status='unknown'
-                AND (c2.name IS NULL OR e2.name IS NULL OR lower(trim(e2.name))=lower(trim(c2.name))
-                     OR extensions.ST_DWithin(e2.geom::extensions.geography,c2.geom::geography,8))
+                """ + match_sql.replace('e.', 'e2.').replace('c.', 'c2.') + """
                 ORDER BY e2.id,
                   CASE WHEN e2.name IS NOT NULL AND c2.name IS NOT NULL
                     AND lower(trim(e2.name))=lower(trim(c2.name)) THEN 0 ELSE 1 END,
                   extensions.ST_Distance(e2.geom::extensions.geography,c2.geom::extensions.geography)) m
-              WHERE e.id=m.id""",(now,now,MATCH_M))
+              WHERE e.id=m.id""",(now,now,MATCH_DEG,MATCH_M))
             print('Updated road edges:',cur.rowcount)
         c.commit()
 
