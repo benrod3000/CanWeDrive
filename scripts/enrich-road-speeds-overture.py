@@ -139,20 +139,17 @@ def main():
                 OR (
                   e.geom && extensions.ST_Expand(c.geom,%s)
                   AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
-                  AND (                    OR (c.name IS NOT NULL AND e.name IS NOT NULL
-                      AND lower(trim(e.name))=lower(trim(c.name))
-                      AND (
-                        lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
-                        OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
-                        OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
-                        OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
-                      )
-                      AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,8)
-                    )
+                  AND c.name IS NOT NULL AND e.name IS NOT NULL
+                  AND lower(trim(e.name))=lower(trim(c.name))
+                  AND (
+                    lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
+                    OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                    OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                    OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
                   )
                 )
               )
-              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
+              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
               e.highway_type,e.name,c.name,c.overture_class,
               CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
