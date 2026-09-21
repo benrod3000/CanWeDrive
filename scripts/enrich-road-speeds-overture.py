@@ -28,6 +28,13 @@ def speed_bucket(speed):
     if speed <= 55: return '46-55'
     return '56-65+'
 
+def distance_bucket(distance):
+    distance=float(distance)
+    if distance <= 3: return '<=3m'
+    if distance <= 8: return '3-8m'
+    if distance <= 12: return '8-12m'
+    return '12-20m'
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--bbox',default=BBOX)
@@ -88,7 +95,7 @@ def main():
               AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
                    OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
-              e.highway_type,
+              e.highway_type,e.name,c.name,
               CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
                 AND lower(trim(e.name))=lower(trim(c.name)) THEN true ELSE false END AS same_name,
               extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
@@ -105,10 +112,22 @@ def main():
                 print('Speed buckets:')
                 for bucket in ('<=15','16-25','26-35','36-45','46-55','56-65+'):
                     print('  %-7s %d' % (bucket,sum(speed_bucket(x)==bucket for x in speeds)))
-                same_name=sum(1 for x in matches if x[4])
+                same_name=sum(1 for x in matches if x[6])
                 print('Match quality:')
                 print('  Same street name:',same_name)
                 print('  Geometry/other:',len(matches)-same_name)
+                print('Distance buckets:')
+                for bucket in ('<=3m','3-8m','8-12m','12-20m'):
+                    print('  %-7s %d' % (bucket,sum(distance_bucket(x[7])==bucket for x in matches)))
+                print('Distance buckets by match quality:')
+                for label,rows in (('Same name',[x for x in matches if x[6]]),('Geometry/other',[x for x in matches if not x[6]])):
+                    print('  '+label+':')
+                    for bucket in ('<=3m','3-8m','8-12m','12-20m'):
+                        print('    %-7s %d' % (bucket,sum(distance_bucket(x[7])==bucket for x in rows)))
+                geometry_only=sorted((x for x in matches if not x[6]), key=lambda x:x[7], reverse=True)
+                print('Worst geometry/other matches (farthest first):')
+                for x in geometry_only[:20]:
+                    print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[7]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
                 print('Road types:')
                 for road_type,count in sorted(Counter((x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
                     print('  %-18s %d' % (road_type,count))
