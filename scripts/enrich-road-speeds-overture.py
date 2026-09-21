@@ -156,6 +156,7 @@ def main():
                         OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
                         OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
                       )
+                      AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,8)
                     )
                   )
                 )
