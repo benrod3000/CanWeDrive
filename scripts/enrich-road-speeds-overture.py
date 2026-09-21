@@ -139,16 +139,7 @@ def main():
                 OR (
                   e.geom && extensions.ST_Expand(c.geom,%s)
                   AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
-                  AND (
-                    (extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,1) AND (
-                      lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
-                      OR lower(coalesce(c.overture_class,'unknown')) = 'unknown'
-                      OR lower(coalesce(e.highway_type,'unknown')) = 'unknown'
-                      OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
-                      OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
-                      OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
-                    ))
-                    OR (c.name IS NOT NULL AND e.name IS NOT NULL
+                  AND (                    OR (c.name IS NOT NULL AND e.name IS NOT NULL
                       AND lower(trim(e.name))=lower(trim(c.name))
                       AND (
                         lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
