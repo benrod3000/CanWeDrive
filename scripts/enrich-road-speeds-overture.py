@@ -140,7 +140,7 @@ def main():
                   e.geom && extensions.ST_Expand(c.geom,%s)
                   AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
                   AND (
-                    (extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,3) AND (
+                    (extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,1) AND (
                       lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
                       OR lower(coalesce(c.overture_class,'unknown')) = 'unknown'
                       OR lower(coalesce(e.highway_type,'unknown')) = 'unknown'
