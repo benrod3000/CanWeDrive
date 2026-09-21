@@ -133,6 +133,24 @@ def main():
             print('Candidate OSM way IDs with verified eligible edges:',exact_eligible)
             print('Candidate OSM way IDs with verified blocked edges:',exact_blocked)
             print('Candidate OSM way IDs with restricted edges:',exact_restricted)
+            cur.execute("""SELECT
+              count(*) AS joined_edges,
+              count(*) FILTER (WHERE e.maxspeed_mph IS NULL) AS joined_unknown,
+              count(*) FILTER (WHERE e.maxspeed_mph IS NOT NULL AND abs(e.maxspeed_mph-c.maxspeed_mph) < 0.1) AS same_speed,
+              count(*) FILTER (WHERE e.maxspeed_mph IS NOT NULL AND abs(e.maxspeed_mph-c.maxspeed_mph) >= 0.1) AS different_speed,
+              count(DISTINCT c.osm_way_id) FILTER (WHERE e.maxspeed_mph IS NOT NULL AND abs(e.maxspeed_mph-c.maxspeed_mph) < 0.1) AS ways_same_speed,
+              count(DISTINCT c.osm_way_id) FILTER (WHERE e.maxspeed_mph IS NOT NULL AND abs(e.maxspeed_mph-c.maxspeed_mph) >= 0.1) AS ways_different_speed
+              FROM overture_speed_candidates c
+              JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id
+              WHERE c.osm_way_id IS NOT NULL""")
+            joined_edges,joined_unknown,same_speed,different_speed,ways_same_speed,ways_different_speed=cur.fetchone()
+            print('Exact OSM way validation:')
+            print('  Joined road edges:',joined_edges)
+            print('  Joined edges still unknown:',joined_unknown)
+            print('  Known edges with same speed:',same_speed)
+            print('  Known edges with different speed:',different_speed)
+            print('  OSM ways with same speed:',ways_same_speed)
+            print('  OSM ways with different speed:',ways_different_speed)
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
