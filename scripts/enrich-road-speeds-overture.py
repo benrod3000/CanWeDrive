@@ -57,8 +57,15 @@ def main():
     for oid,wkb,rules,names,sources in rows:
         name=names.get('primary') if isinstance(names,dict) else None
         source_names=[]
+        osm_way_id=None
         if isinstance(sources,list):
-            source_names=[x.get('dataset') for x in sources if isinstance(x,dict) and x.get('dataset')]
+            for source_item in sources:
+                if not isinstance(source_item,dict): continue
+                if source_item.get('dataset'): source_names.append(source_item.get('dataset'))
+                record_id=source_item.get('record_id')
+                if osm_way_id is None and source_item.get('dataset')=='OpenStreetMap' and isinstance(record_id,str):
+                    record_id=record_id.split('@',1)[0]
+                    if record_id.startswith('w') and record_id[1:].isdigit(): osm_way_id=int(record_id[1:])
         source=','.join(dict.fromkeys(source_names)) or 'Overture'
         for rule in rules or []:
             ms=rule.get('max_speed') if isinstance(rule,dict) else None
@@ -66,7 +73,7 @@ def main():
             if not isinstance(ms,dict) or rule.get('between') is not None: continue
             if any(when.get(k) is not None for k in ('during','mode','using','vehicle','heading')): continue
             speed=mph(ms.get('value'),ms.get('unit'))
-            if speed is not None: candidates.append((str(oid),wkb,speed,name,source))
+            if speed is not None: candidates.append((str(oid),wkb,speed,name,source,osm_way_id))
     print('Overture release:',RELEASE)
     print('Explicit unconditional speed candidates:',len(candidates))
     if not candidates: return
@@ -76,10 +83,10 @@ def main():
         with c.cursor() as cur:
             cur.execute("""CREATE TEMP TABLE overture_speed_candidates(
               overture_id text, geom extensions.geometry(LineString,4326),
-              maxspeed_mph numeric, name text, source_dataset text) ON COMMIT DROP""")
+              maxspeed_mph numeric, name text, source_dataset text, osm_way_id bigint) ON COMMIT DROP""")
             cur.executemany(
                 """INSERT INTO overture_speed_candidates
-                  VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s)""",
+                  VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s,%s)""",
                 candidates
             )
             cur.execute("""CREATE INDEX overture_speed_candidates_geom_gix
@@ -101,6 +108,7 @@ def main():
               extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
               """ + match_sql + """
               ORDER BY e.id,
+                CASE WHEN e.osm_way_id = c.osm_way_id THEN 0 ELSE 1 END,
                 CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
                   AND lower(trim(e.name))=lower(trim(c.name)) THEN 0 ELSE 1 END, d""",(MATCH_DEG,MATCH_M))
             matches=cur.fetchall()
@@ -112,22 +120,25 @@ def main():
                 print('Speed buckets:')
                 for bucket in ('<=15','16-25','26-35','36-45','46-55','56-65+'):
                     print('  %-7s %d' % (bucket,sum(speed_bucket(x)==bucket for x in speeds)))
+                exact_osm_way=sum(1 for x in matches if x[7])
                 same_name=sum(1 for x in matches if x[6])
                 print('Match quality:')
+                print('  Exact OSM way ID:',exact_osm_way)
+                print('  Geometry/name fallback:',len(matches)-exact_osm_way)
                 print('  Same street name:',same_name)
                 print('  Geometry/other:',len(matches)-same_name)
                 print('Distance buckets:')
                 for bucket in ('<=3m','3-8m','8-12m','12-20m'):
-                    print('  %-7s %d' % (bucket,sum(distance_bucket(x[7])==bucket for x in matches)))
+                    print('  %-7s %d' % (bucket,sum(distance_bucket(x[8])==bucket for x in matches)))
                 print('Distance buckets by match quality:')
                 for label,rows in (('Same name',[x for x in matches if x[6]]),('Geometry/other',[x for x in matches if not x[6]])):
                     print('  '+label+':')
                     for bucket in ('<=3m','3-8m','8-12m','12-20m'):
                         print('    %-7s %d' % (bucket,sum(distance_bucket(x[7])==bucket for x in rows)))
-                geometry_only=sorted((x for x in matches if not x[6]), key=lambda x:x[7], reverse=True)
+                geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[8], reverse=True)
                 print('Worst geometry/other matches (farthest first):')
                 for x in geometry_only[:20]:
-                    print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[7]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
+                    print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[8]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
                 print('Road types:')
                 for road_type,count in sorted(Counter((x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
                     print('  %-18s %d' % (road_type,count))
@@ -148,6 +159,7 @@ def main():
               FROM (SELECT DISTINCT ON(e2.id) e2.id,c2.maxspeed_mph,c2.source_dataset
                 """ + match_sql.replace('e.', 'e2.').replace('c.', 'c2.') + """
                 ORDER BY e2.id,
+                  CASE WHEN e2.osm_way_id = c2.osm_way_id THEN 0 ELSE 1 END,
                   CASE WHEN e2.name IS NOT NULL AND c2.name IS NOT NULL
                     AND lower(trim(e2.name))=lower(trim(c2.name)) THEN 0 ELSE 1 END,
                   extensions.ST_Distance(e2.geom::extensions.geography,c2.geom::extensions.geography)) m
