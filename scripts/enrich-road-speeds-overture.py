@@ -181,8 +181,8 @@ def main():
                 print('Speed buckets:')
                 for bucket in ('<=15','16-25','26-35','36-45','46-55','56-65+'):
                     print('  %-7s %d' % (bucket,sum(speed_bucket(x)==bucket for x in speeds)))
-                exact_osm_way=sum(1 for x in matches if x[7])
-                same_name=sum(1 for x in matches if x[6])
+                exact_osm_way=sum(1 for x in matches if x[8])
+                same_name=sum(1 for x in matches if x[7])
                 print('Match quality:')
                 print('  Exact OSM way ID:',exact_osm_way)
                 print('  Geometry/name fallback:',len(matches)-exact_osm_way)
@@ -192,14 +192,17 @@ def main():
                 for bucket in ('<=3m','3-8m','8-12m','12-20m'):
                     print('  %-7s %d' % (bucket,sum(distance_bucket(x[9])==bucket for x in matches)))
                 print('Distance buckets by match quality:')
-                for label,rows in (('Same name',[x for x in matches if x[6]]),('Geometry/other',[x for x in matches if not x[6]])):
+                for label,rows in (('Same name',[x for x in matches if x[7]]),('Geometry/other',[x for x in matches if not x[7]])):
                     print('  '+label+':')
                     for bucket in ('<=3m','3-8m','8-12m','12-20m'):
                         print('    %-7s %d' % (bucket,sum(distance_bucket(x[9])==bucket for x in rows)))
-                geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[9], reverse=True)
+                geometry_only=sorted((x for x in matches if not x[8]), key=lambda x:x[9], reverse=True)
                 print('Worst geometry/other matches (farthest first):')
                 for x in geometry_only[:20]:
                     print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[9]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
+                print('Class compatibility:')
+                for pair,count in sorted(Counter((x[6] or 'unknown',x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
+                    print('  %-18s -> %-18s %d' % (pair[0],pair[1],count))
                 print('Road types:')
                 for road_type,count in sorted(Counter((x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
                     print('  %-18s %d' % (road_type,count))
