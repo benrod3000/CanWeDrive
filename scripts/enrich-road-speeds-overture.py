@@ -151,6 +151,19 @@ def main():
             print('  Known edges with different speed:',different_speed)
             print('  OSM ways with same speed:',ways_same_speed)
             print('  OSM ways with different speed:',ways_different_speed)
+            cur.execute("""SELECT c.osm_way_id, c.maxspeed_mph, e.maxspeed_mph,
+              e.name, e.highway_type, e.direction, e.osm_segment_index
+              FROM overture_speed_candidates c
+              JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id
+              WHERE c.osm_way_id IS NOT NULL
+                AND e.maxspeed_mph IS NOT NULL
+                AND abs(e.maxspeed_mph-c.maxspeed_mph) >= 0.1
+              ORDER BY c.osm_way_id, e.maxspeed_mph, e.osm_segment_index
+              LIMIT 100""")
+            print('Exact OSM way speed disagreements:')
+            for row in cur.fetchall():
+                print('  way=%s | Overture=%.1f | graph=%.1f | %s | %s | direction=%s | segment=%s' % (
+                    row[0],float(row[1]),float(row[2]),row[3] or '(unnamed)',row[4] or 'unknown',row[5] or 'unknown',row[6]))
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
