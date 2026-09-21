@@ -9,7 +9,7 @@ import psycopg
 RELEASE=os.getenv('OVERTURE_RELEASE','2026-08-19.0')
 PARQUET='s3://overturemaps-us-west-2/release/'+RELEASE+'/theme=transportation/type=segment/*'
 BBOX=os.getenv('OVERTURE_BBOX','-117.5355,32.9732,-117.2123,33.4022')
-MATCH_M=float(os.getenv('OVERTURE_MATCH_METERS','20'))
+MATCH_M=float(os.getenv('OVERTURE_MATCH_METERS','8'))
 MATCH_DEG=MATCH_M/111000.0
 
 def mph(v,u):
@@ -139,8 +139,13 @@ def main():
                 OR (
                   e.geom && extensions.ST_Expand(c.geom,%s)
                   AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
-                  AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
-                       OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))
+                  AND (
+                    extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,3)
+                    OR (
+                      c.name IS NOT NULL AND e.name IS NOT NULL
+                      AND lower(trim(e.name))=lower(trim(c.name))
+                    )
+                  )
                 )
               )
               WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
