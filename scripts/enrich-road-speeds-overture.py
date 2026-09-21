@@ -54,6 +54,8 @@ def main():
     if a.limit: q += ' LIMIT %d' % a.limit
     rows=d.execute(q).fetchall(); d.close()
     candidates=[]
+    source_record_stats=Counter()
+    source_record_samples=[]
     for oid,wkb,rules,names,sources in rows:
         name=names.get('primary') if isinstance(names,dict) else None
         source_names=[]
@@ -63,6 +65,17 @@ def main():
                 if not isinstance(source_item,dict): continue
                 if source_item.get('dataset'): source_names.append(source_item.get('dataset'))
                 record_id=source_item.get('record_id')
+                if source_item.get('dataset') == 'OpenStreetMap':
+                    if record_id is None:
+                        source_record_stats['OSM record_id: null'] += 1
+                    elif isinstance(record_id,str):
+                        source_record_stats['OSM record_id: string'] += 1
+                        prefix=record_id.split('@',1)[0][:1] or '(empty)'
+                        source_record_stats['OSM record prefix: '+prefix] += 1
+                        if len(source_record_samples) < 12:
+                            source_record_samples.append((str(oid), record_id, source_item.get('property')))
+                    else:
+                        source_record_stats['OSM record_id: '+type(record_id).__name__] += 1
                 if osm_way_id is None and source_item.get('dataset')=='OpenStreetMap' and isinstance(record_id,str):
                     record_id=record_id.split('@',1)[0]
                     if record_id.startswith('w') and record_id[1:].isdigit(): osm_way_id=int(record_id[1:])
@@ -151,6 +164,13 @@ def main():
                 print('Overture sources:')
                 for source,count in sorted(Counter((x[2] or 'Overture') for x in matches).items(), key=lambda item:(-item[1],item[0])):
                     print('  %-30s %d' % (source,count))
+            print('OSM source record diagnostics:')
+            for label,count in sorted(source_record_stats.items()):
+                print('  %-32s %d' % (label,count))
+            if source_record_samples:
+                print('Sample OSM source records:')
+                for oid,record_id,prop in source_record_samples:
+                    print('  %s | %s | property=%s' % (oid,record_id,prop or '(none)'))
             if not a.apply:
                 print('DRY RUN ONLY. No road_edges were modified.')
                 return
