@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import argparse, os
+from collections import Counter
 from datetime import datetime, timezone
 import duckdb
 import psycopg
@@ -17,6 +18,15 @@ def mph(v,u):
     if u in ('mph','mi/h'): return float(v)
     if u in ('km/h','kph'): return float(v)/1.609344
     return None
+
+def speed_bucket(speed):
+    speed=float(speed)
+    if speed <= 15: return '<=15'
+    if speed <= 25: return '16-25'
+    if speed <= 35: return '26-35'
+    if speed <= 45: return '36-45'
+    if speed <= 55: return '46-55'
+    return '56-65+'
 
 def main():
     ap=argparse.ArgumentParser()
@@ -65,9 +75,6 @@ def main():
                   VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s)""",
                 candidates
             )
-            # The candidate table is small enough to index. The bbox predicate below
-            # also lets the existing road_edges geometry GiST index prune the 244k
-            # unknown edges before exact distance/name matching.
             cur.execute("""CREATE INDEX overture_speed_candidates_geom_gix
               ON overture_speed_candidates USING GIST (geom)""")
             cur.execute("""ANALYZE overture_speed_candidates""")
@@ -81,6 +88,9 @@ def main():
               AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
                    OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
+              e.highway_type,
+              CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
+                AND lower(trim(e.name))=lower(trim(c.name)) THEN true ELSE false END AS same_name,
               extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
               """ + match_sql + """
               ORDER BY e.id,
@@ -89,7 +99,22 @@ def main():
             matches=cur.fetchall()
             print('Unknown edges before:',before)
             print('Unknown edges matched:',len(matches))
-            if matches: print('Matched speed range: %.1f to %.1f mph' % (min(float(x[1]) for x in matches),max(float(x[1]) for x in matches)))
+            if matches:
+                speeds=[float(x[1]) for x in matches]
+                print('Matched speed range: %.1f to %.1f mph' % (min(speeds),max(speeds)))
+                print('Speed buckets:')
+                for bucket in ('<=15','16-25','26-35','36-45','46-55','56-65+'):
+                    print('  %-7s %d' % (bucket,sum(speed_bucket(x)==bucket for x in speeds)))
+                same_name=sum(1 for x in matches if x[4])
+                print('Match quality:')
+                print('  Same street name:',same_name)
+                print('  Geometry/other:',len(matches)-same_name)
+                print('Road types:')
+                for road_type,count in sorted(Counter((x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
+                    print('  %-18s %d' % (road_type,count))
+                print('Overture sources:')
+                for source,count in sorted(Counter((x[2] or 'Overture') for x in matches).items(), key=lambda item:(-item[1],item[0])):
+                    print('  %-30s %d' % (source,count))
             if not a.apply:
                 print('DRY RUN ONLY. No road_edges were modified.')
                 return
