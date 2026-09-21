@@ -149,7 +149,7 @@ def main():
                   )
                 )
               )
-              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
+              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
               e.highway_type,e.name,c.name,c.overture_class,
               CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
