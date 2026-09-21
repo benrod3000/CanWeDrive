@@ -96,15 +96,21 @@ def main():
               WHERE maxspeed_mph IS NULL AND lsv_status='unknown'""")
             before=cur.fetchone()[0]
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
-              ON e.geom && extensions.ST_Expand(c.geom,%s)
-              AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
-              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'
-              AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
-                   OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))"""
+              ON (
+                e.osm_way_id = c.osm_way_id
+                OR (
+                  e.geom && extensions.ST_Expand(c.geom,%s)
+                  AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
+                  AND (c.name IS NULL OR e.name IS NULL OR lower(trim(e.name))=lower(trim(c.name))
+                       OR extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,8))
+                )
+              )
+              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
               e.highway_type,e.name,c.name,
               CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
                 AND lower(trim(e.name))=lower(trim(c.name)) THEN true ELSE false END AS same_name,
+              (e.osm_way_id = c.osm_way_id) AS exact_osm_way,
               extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) d
               """ + match_sql + """
               ORDER BY e.id,
@@ -134,7 +140,7 @@ def main():
                 for label,rows in (('Same name',[x for x in matches if x[6]]),('Geometry/other',[x for x in matches if not x[6]])):
                     print('  '+label+':')
                     for bucket in ('<=3m','3-8m','8-12m','12-20m'):
-                        print('    %-7s %d' % (bucket,sum(distance_bucket(x[7])==bucket for x in rows)))
+                        print('    %-7s %d' % (bucket,sum(distance_bucket(x[8])==bucket for x in rows)))
                 geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[8], reverse=True)
                 print('Worst geometry/other matches (farthest first):')
                 for x in geometry_only[:20]:
