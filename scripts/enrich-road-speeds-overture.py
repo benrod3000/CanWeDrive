@@ -196,7 +196,7 @@ def main():
                     print('  '+label+':')
                     for bucket in ('<=3m','3-8m','8-12m','12-20m'):
                         print('    %-7s %d' % (bucket,sum(distance_bucket(x[9])==bucket for x in rows)))
-                geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[8], reverse=True)
+                geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[9], reverse=True)
                 print('Worst geometry/other matches (farthest first):')
                 for x in geometry_only[:20]:
                     print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[9]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
