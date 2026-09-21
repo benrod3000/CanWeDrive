@@ -59,10 +59,13 @@ def main():
             cur.execute("""CREATE TEMP TABLE overture_speed_candidates(
               overture_id text, geom extensions.geometry(LineString,4326),
               maxspeed_mph numeric, name text, source_dataset text) ON COMMIT DROP""")
-            for oid,wkb,speed,name,source in candidates:
-                cur.execute("""INSERT INTO overture_speed_candidates
+            # Batch the remote inserts. Psycopg 3 uses pipeline mode internally
+            # for executemany(), avoiding one client/server round-trip per candidate.
+            cur.executemany(
+                """INSERT INTO overture_speed_candidates
                   VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s)""",
-                  (oid,wkb,speed,name,source))
+                candidates
+            )
             cur.execute("""SELECT count(*) FROM public.road_edges
               WHERE maxspeed_mph IS NULL AND lsv_status='unknown'""")
             before=cur.fetchone()[0]
