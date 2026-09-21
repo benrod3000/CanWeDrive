@@ -217,7 +217,7 @@ def main():
               lsv_reason=CASE WHEN m.maxspeed_mph<=35 THEN 'Overture speed limit <= 35 mph' ELSE 'Overture speed limit > 35 mph' END,
               updated_at=%s
               FROM (SELECT DISTINCT ON(e2.id) e2.id,c2.maxspeed_mph,c2.source_dataset
-                """ + match_sql.replace('e.', 'e2.').replace('c.', 'c2.') + """
+                " + match_sql.replace('e.', 'e2.').replace('c.', 'c2.') + "
                 ORDER BY e2.id,
                   CASE WHEN e2.osm_way_id = c2.osm_way_id THEN 0 ELSE 1 END,
                   CASE WHEN e2.name IS NOT NULL AND c2.name IS NOT NULL
