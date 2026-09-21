@@ -151,19 +151,48 @@ def main():
             print('  Known edges with different speed:',different_speed)
             print('  OSM ways with same speed:',ways_same_speed)
             print('  OSM ways with different speed:',ways_different_speed)
-            cur.execute("""SELECT c.osm_way_id, c.maxspeed_mph, e.maxspeed_mph,
-              e.name, e.highway_type, e.direction, e.osm_segment_index
+            cur.execute("""SELECT c.osm_way_id,
+              min(c.maxspeed_mph) AS overture_min,
+              max(c.maxspeed_mph) AS overture_max,
+              min(e.maxspeed_mph) AS graph_min,
+              max(e.maxspeed_mph) AS graph_max,
+              min(e.name), min(e.highway_type),
+              count(DISTINCT e.id) AS edge_count
               FROM overture_speed_candidates c
               JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id
               WHERE c.osm_way_id IS NOT NULL
                 AND e.maxspeed_mph IS NOT NULL
                 AND abs(e.maxspeed_mph-c.maxspeed_mph) >= 0.1
-              ORDER BY c.osm_way_id, e.maxspeed_mph, e.osm_segment_index
+              GROUP BY c.osm_way_id
+              ORDER BY c.osm_way_id
               LIMIT 100""")
-            print('Exact OSM way speed disagreements:')
+            print('Exact OSM way speed disagreements (deduped by way):')
             for row in cur.fetchall():
-                print('  way=%s | Overture=%.1f | graph=%.1f | %s | %s | direction=%s | segment=%s' % (
-                    row[0],float(row[1]),float(row[2]),row[3] or '(unnamed)',row[4] or 'unknown',row[5] or 'unknown',row[6]))
+                print('  way=%s | Overture=%.1f-%.1f | graph=%.1f-%.1f | %s | %s | edges=%s' % (
+                    row[0],float(row[1]),float(row[2]),float(row[3]),float(row[4]),
+                    row[5] or '(unnamed)',row[6] or 'unknown',row[7]))
+
+            cur.execute("""SELECT count(DISTINCT c.osm_way_id)
+              FROM overture_candidate_osm_ids c
+              LEFT JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id
+              WHERE e.osm_way_id IS NULL""")
+            missing_osm_way_ids=cur.fetchone()[0]
+            print('Candidate OSM way IDs missing from road_edges:',missing_osm_way_ids)
+            if missing_osm_way_ids:
+                cur.execute("""SELECT c.osm_way_id, min(c.maxspeed_mph), max(c.maxspeed_mph),
+                  min(c.name), min(c.overture_class),
+                  count(*) AS candidate_rows
+                  FROM overture_speed_candidates c
+                  LEFT JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id
+                  WHERE e.osm_way_id IS NULL
+                    AND c.osm_way_id IS NOT NULL
+                  GROUP BY c.osm_way_id
+                  ORDER BY c.osm_way_id
+                  LIMIT 50""")
+                print('Sample missing OSM way IDs:')
+                for row in cur.fetchall():
+                    print('  way=%s | Overture=%.1f-%.1f | %s | class=%s | candidates=%s' % (
+                        row[0],float(row[1]),float(row[2]),row[3] or '(unnamed)',row[4] or 'unknown',row[5]))
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
