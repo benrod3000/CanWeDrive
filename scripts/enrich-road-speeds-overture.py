@@ -193,6 +193,67 @@ def main():
                 for row in cur.fetchall():
                     print('  way=%s | Overture=%.1f-%.1f | %s | class=%s | candidates=%s' % (
                         row[0],float(row[1]),float(row[2]),row[3] or '(unnamed)',row[4] or 'unknown',row[5]))
+            cur.execute("""SELECT count(*) AS candidates,
+              count(*) FILTER (WHERE nearest.id IS NOT NULL) AS within_20m,
+              count(*) FILTER (WHERE nearest.same_name) AS nearest_same_name,
+              count(*) FILTER (WHERE nearest.same_class) AS nearest_same_class,
+              count(*) FILTER (WHERE nearest.same_name AND nearest.same_class) AS nearest_same_name_class
+              FROM overture_speed_candidates c
+              LEFT JOIN LATERAL (
+                SELECT e.id,
+                  lower(trim(e.name))=lower(trim(c.name)) AS same_name,
+                  (
+                    lower(coalesce(c.overture_class,''))=lower(coalesce(e.highway_type,''))
+                    OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                    OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                    OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
+                  ) AS same_class,
+                  extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) AS distance_m
+                FROM public.road_edges e
+                ORDER BY e.geom <-> c.geom
+                LIMIT 1
+              ) nearest ON true
+              WHERE nearest.distance_m IS NULL OR nearest.distance_m <= 20""")
+            candidate_nearest=cur.fetchone()
+            print('Nearest road-edge diagnostic:')
+            print('  Candidate rows within 20m:',candidate_nearest[0])
+            print('  Candidates with nearest edge <=20m:',candidate_nearest[1])
+            print('  Nearest edge same street name:',candidate_nearest[2])
+            print('  Nearest edge same road class:',candidate_nearest[3])
+            print('  Nearest edge same name + class:',candidate_nearest[4])
+
+            cur.execute("""SELECT
+              count(*) AS total,
+              count(*) FILTER (WHERE best.distance_m <= 3) AS d0_3,
+              count(*) FILTER (WHERE best.distance_m > 3 AND best.distance_m <= 8) AS d3_8,
+              count(*) FILTER (WHERE best.distance_m > 8 AND best.distance_m <= 20) AS d8_20,
+              count(*) FILTER (WHERE best.distance_m > 20) AS d20_plus,
+              count(*) FILTER (WHERE best.same_name) AS same_name,
+              count(*) FILTER (WHERE best.same_name AND best.same_class) AS same_name_class
+              FROM overture_speed_candidates c
+              LEFT JOIN LATERAL (
+                SELECT
+                  lower(trim(e.name))=lower(trim(c.name)) AS same_name,
+                  (
+                    lower(coalesce(c.overture_class,''))=lower(coalesce(e.highway_type,''))
+                    OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                    OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                    OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
+                  ) AS same_class,
+                  extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography) AS distance_m
+                FROM public.road_edges e
+                ORDER BY e.geom <-> c.geom
+                LIMIT 1
+              ) best ON true""")
+            candidate_nearest_detail=cur.fetchone()
+            print('Nearest edge distance distribution:')
+            print('  <=3m:',candidate_nearest_detail[1])
+            print('  3-8m:',candidate_nearest_detail[2])
+            print('  8-20m:',candidate_nearest_detail[3])
+            print('  >20m:',candidate_nearest_detail[4])
+            print('  Same name:',candidate_nearest_detail[5])
+            print('  Same name + class:',candidate_nearest_detail[6])
+
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
