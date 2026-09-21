@@ -116,7 +116,7 @@ def main():
             if candidate_osm_ids:
                 cur.executemany("INSERT INTO overture_candidate_osm_ids VALUES(%s)", [(x,) for x in candidate_osm_ids])
                 if candidate_osm_ids:
-                cur.execute("""SELECT
+                    cur.execute("""SELECT
                   count(DISTINCT c.osm_way_id),
                   count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='unknown' AND e.maxspeed_mph IS NULL),
                   count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='verified_eligible'),
