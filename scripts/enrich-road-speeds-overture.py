@@ -115,14 +115,24 @@ def main():
             cur.execute("""CREATE TEMP TABLE overture_candidate_osm_ids(osm_way_id bigint) ON COMMIT DROP""")
             if candidate_osm_ids:
                 cur.executemany("INSERT INTO overture_candidate_osm_ids VALUES(%s)", [(x,) for x in candidate_osm_ids])
-                cur.execute("""SELECT count(DISTINCT c.osm_way_id)
+                if candidate_osm_ids:
+                cur.execute("""SELECT
+                  count(DISTINCT c.osm_way_id),
+                  count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='unknown' AND e.maxspeed_mph IS NULL),
+                  count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='verified_eligible'),
+                  count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='verified_blocked'),
+                  count(DISTINCT e.osm_way_id) FILTER (WHERE e.lsv_status='restricted')
                   FROM overture_candidate_osm_ids c
                   JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id""")
-                exact_id_intersection=cur.fetchone()[0]
+                exact_id_intersection,exact_unknown,exact_eligible,exact_blocked,exact_restricted=cur.fetchone()
             else:
-                exact_id_intersection=0
+                exact_id_intersection=exact_unknown=exact_eligible=exact_blocked=exact_restricted=0
             print('Unique candidate OSM way IDs:',len(set(candidate_osm_ids)))
             print('Candidate OSM way IDs found in road_edges:',exact_id_intersection)
+            print('Candidate OSM way IDs with unknown edges:',exact_unknown)
+            print('Candidate OSM way IDs with verified eligible edges:',exact_eligible)
+            print('Candidate OSM way IDs with verified blocked edges:',exact_blocked)
+            print('Candidate OSM way IDs with restricted edges:',exact_restricted)
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
