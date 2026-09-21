@@ -108,6 +108,21 @@ def main():
             cur.execute("""SELECT count(*) FROM public.road_edges
               WHERE maxspeed_mph IS NULL AND lsv_status='unknown'""")
             before=cur.fetchone()[0]
+            candidates_with_osm_id=sum(1 for x in candidates if x[5] is not None)
+            candidate_osm_ids=[x[5] for x in candidates if x[5] is not None]
+            print('Candidates with OSM way ID:',candidates_with_osm_id)
+            print('Candidates without OSM way ID:',len(candidates)-candidates_with_osm_id)
+            cur.execute("""CREATE TEMP TABLE overture_candidate_osm_ids(osm_way_id bigint) ON COMMIT DROP""")
+            if candidate_osm_ids:
+                cur.executemany("INSERT INTO overture_candidate_osm_ids VALUES(%s)", [(x,) for x in candidate_osm_ids])
+                cur.execute("""SELECT count(DISTINCT c.osm_way_id)
+                  FROM overture_candidate_osm_ids c
+                  JOIN public.road_edges e ON e.osm_way_id=c.osm_way_id""")
+                exact_id_intersection=cur.fetchone()[0]
+            else:
+                exact_id_intersection=0
+            print('Unique candidate OSM way IDs:',len(set(candidate_osm_ids)))
+            print('Candidate OSM way IDs found in road_edges:',exact_id_intersection)
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
