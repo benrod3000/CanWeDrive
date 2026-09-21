@@ -46,7 +46,7 @@ def main():
     d.execute('INSTALL spatial')
     d.execute('LOAD spatial')
     d.execute("SET s3_region='us-west-2'")
-    q="""SELECT id, ST_AsWKB(geometry), speed_limits, names, sources
+    q="""SELECT id, ST_AsWKB(geometry), speed_limits, names, sources, class
          FROM read_parquet('%s')
          WHERE bbox.xmax >= %s AND bbox.xmin <= %s
            AND bbox.ymax >= %s AND bbox.ymin <= %s
@@ -56,7 +56,7 @@ def main():
     candidates=[]
     source_record_stats=Counter()
     source_record_samples=[]
-    for oid,wkb,rules,names,sources in rows:
+    for oid,wkb,rules,names,sources,road_class in rows:
         name=names.get('primary') if isinstance(names,dict) else None
         source_names=[]
         osm_way_id=None
@@ -86,7 +86,7 @@ def main():
             if not isinstance(ms,dict) or rule.get('between') is not None: continue
             if any(when.get(k) is not None for k in ('during','mode','using','vehicle','heading')): continue
             speed=mph(ms.get('value'),ms.get('unit'))
-            if speed is not None: candidates.append((str(oid),wkb,speed,name,source,osm_way_id))
+            if speed is not None: candidates.append((str(oid),wkb,speed,name,source,osm_way_id,road_class))
     print('Overture release:',RELEASE)
     print('Explicit unconditional speed candidates:',len(candidates))
     if not candidates: return
@@ -96,10 +96,10 @@ def main():
         with c.cursor() as cur:
             cur.execute("""CREATE TEMP TABLE overture_speed_candidates(
               overture_id text, geom extensions.geometry(LineString,4326),
-              maxspeed_mph numeric, name text, source_dataset text, osm_way_id bigint) ON COMMIT DROP""")
+              maxspeed_mph numeric, name text, source_dataset text, osm_way_id bigint, overture_class text) ON COMMIT DROP""")
             cur.executemany(
                 """INSERT INTO overture_speed_candidates
-                  VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s,%s)""",
+                  VALUES(%s,extensions.ST_SetSRID(extensions.ST_GeomFromWKB(%s),4326),%s,%s,%s,%s,%s)""",
                 candidates
             )
             cur.execute("""CREATE INDEX overture_speed_candidates_geom_gix
@@ -140,17 +140,29 @@ def main():
                   e.geom && extensions.ST_Expand(c.geom,%s)
                   AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,%s)
                   AND (
-                    extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,3)
-                    OR (
-                      c.name IS NOT NULL AND e.name IS NOT NULL
+                    (extensions.ST_DWithin(e.geom::extensions.geography,c.geom::geography,3) AND (
+                      lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
+                      OR lower(coalesce(c.overture_class,'unknown')) = 'unknown'
+                      OR lower(coalesce(e.highway_type,'unknown')) = 'unknown'
+                      OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                      OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                      OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
+                    ))
+                    OR (c.name IS NOT NULL AND e.name IS NOT NULL
                       AND lower(trim(e.name))=lower(trim(c.name))
+                      AND (
+                        lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
+                        OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                        OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                        OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
+                      )
                     )
                   )
                 )
               )
               WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'"""
             cur.execute("""SELECT DISTINCT ON(e.id) e.id,c.maxspeed_mph,c.source_dataset,
-              e.highway_type,e.name,c.name,
+              e.highway_type,e.name,c.name,c.overture_class,
               CASE WHEN e.name IS NOT NULL AND c.name IS NOT NULL
                 AND lower(trim(e.name))=lower(trim(c.name)) THEN true ELSE false END AS same_name,
               (e.osm_way_id = c.osm_way_id) AS exact_osm_way,
@@ -178,16 +190,16 @@ def main():
                 print('  Geometry/other:',len(matches)-same_name)
                 print('Distance buckets:')
                 for bucket in ('<=3m','3-8m','8-12m','12-20m'):
-                    print('  %-7s %d' % (bucket,sum(distance_bucket(x[8])==bucket for x in matches)))
+                    print('  %-7s %d' % (bucket,sum(distance_bucket(x[9])==bucket for x in matches)))
                 print('Distance buckets by match quality:')
                 for label,rows in (('Same name',[x for x in matches if x[6]]),('Geometry/other',[x for x in matches if not x[6]])):
                     print('  '+label+':')
                     for bucket in ('<=3m','3-8m','8-12m','12-20m'):
-                        print('    %-7s %d' % (bucket,sum(distance_bucket(x[8])==bucket for x in rows)))
+                        print('    %-7s %d' % (bucket,sum(distance_bucket(x[9])==bucket for x in rows)))
                 geometry_only=sorted((x for x in matches if not x[7]), key=lambda x:x[8], reverse=True)
                 print('Worst geometry/other matches (farthest first):')
                 for x in geometry_only[:20]:
-                    print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[8]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
+                    print('  %.1fm | %s | %s | %s | %.1f mph' % (float(x[9]), x[4] or '(unnamed)', x[5] or '(unnamed)', x[3] or 'unknown', float(x[1])))
                 print('Road types:')
                 for road_type,count in sorted(Counter((x[3] or 'unknown') for x in matches).items(), key=lambda item:(-item[1],item[0])):
                     print('  %-18s %d' % (road_type,count))
