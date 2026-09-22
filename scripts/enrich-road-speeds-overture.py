@@ -254,6 +254,45 @@ def main():
             print('  Same name:',candidate_nearest_detail[5])
             print('  Same name + class:',candidate_nearest_detail[6])
 
+            cur.execute("""SELECT
+              count(DISTINCT e.id) AS unknown_edges,
+              count(DISTINCT e.id) FILTER (WHERE q.candidate_count=1) AS edges_with_one_candidate,
+              count(DISTINCT e.id) FILTER (WHERE q.candidate_count>1) AS edges_with_multiple_candidates,
+              count(DISTINCT e.id) FILTER (WHERE q.speed_count=1) AS edges_with_one_speed,
+              count(DISTINCT e.id) FILTER (WHERE q.speed_count>1) AS edges_with_conflicting_speeds,
+              count(DISTINCT e.id) FILTER (WHERE q.min_distance_m <= 3) AS edges_within_3m,
+              count(DISTINCT e.id) FILTER (WHERE q.min_distance_m > 3 AND q.min_distance_m <= 8) AS edges_3_8m,
+              count(DISTINCT e.id) FILTER (WHERE q.min_distance_m > 8 AND q.min_distance_m <= 20) AS edges_8_20m
+              FROM public.road_edges e
+              JOIN LATERAL (
+                SELECT count(*) AS candidate_count,
+                  count(DISTINCT c.maxspeed_mph) AS speed_count,
+                  min(extensions.ST_Distance(e.geom::extensions.geography,c.geom::extensions.geography)) AS min_distance_m
+                FROM overture_speed_candidates c
+                WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'
+                  AND e.name IS NOT NULL AND c.name IS NOT NULL
+                  AND lower(trim(e.name))=lower(trim(c.name))
+                  AND (
+                    lower(coalesce(c.overture_class,'unknown')) = lower(coalesce(e.highway_type,'unknown'))
+                    OR (lower(coalesce(c.overture_class,''))='primary' AND lower(coalesce(e.highway_type,''))='primary_link')
+                    OR (lower(coalesce(c.overture_class,''))='secondary' AND lower(coalesce(e.highway_type,''))='secondary_link')
+                    OR (lower(coalesce(c.overture_class,''))='tertiary' AND lower(coalesce(e.highway_type,''))='tertiary_link')
+                  )
+                  AND extensions.ST_DWithin(e.geom::extensions.geography,c.geom::extensions.geography,20)
+              ) q ON true
+              WHERE e.maxspeed_mph IS NULL AND e.lsv_status='unknown'
+                AND q.candidate_count > 0""")
+            expanded_diag=cur.fetchone()
+            print('Expanded same-name + class diagnostic (20m):')
+            print('  Unknown edges with at least one candidate:',expanded_diag[0])
+            print('  Edges with one candidate:',expanded_diag[1])
+            print('  Edges with multiple candidates:',expanded_diag[2])
+            print('  Edges with one distinct speed:',expanded_diag[3])
+            print('  Edges with conflicting speeds:',expanded_diag[4])
+            print('  Edges with nearest candidate <=3m:',expanded_diag[5])
+            print('  Edges with nearest candidate 3-8m:',expanded_diag[6])
+            print('  Edges with nearest candidate 8-20m:',expanded_diag[7])
+
             match_sql="""FROM public.road_edges e JOIN overture_speed_candidates c
               ON (
                 e.osm_way_id = c.osm_way_id
