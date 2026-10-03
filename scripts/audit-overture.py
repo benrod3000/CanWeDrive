@@ -8,14 +8,13 @@ import csv
 import json
 import math
 import os
-import sys
 from collections import Counter, defaultdict
 
 import duckdb
+from shapely import wkb
 
 RELEASE = os.environ.get("OVERTURE_RELEASE", "2026-09-23.1")
 S3 = f"s3://overturemaps-us-west-2/release/{RELEASE}/theme=transportation/type=segment/*"
-# Carlsbad / Encinitas / Oceanside / Vista / San Marcos working area.
 BBOX = (-117.40, 32.98, -117.23, 33.30)
 
 
@@ -32,17 +31,14 @@ def haversine_miles(a, b):
 
 
 def geometry_miles(value):
-    """Handle GeoArrow/list-like coordinates returned by DuckDB where possible."""
     if value is None:
         return 0.0
     try:
-        # DuckDB may expose geometry as a shapely-like object or bytes depending on build.
-        if hasattr(value, "__geo_interface__"):
-            coords = value.__geo_interface__["coordinates"]
-            return sum(haversine_miles(coords[i - 1], coords[i]) for i in range(1, len(coords)))
+        geometry = wkb.loads(bytes(value))
+        coords = list(geometry.coords)
+        return sum(haversine_miles(coords[i - 1], coords[i]) for i in range(1, len(coords)))
     except Exception:
-        pass
-    return 0.0
+        return 0.0
 
 
 def normalize_speed_limits(value):
@@ -83,9 +79,8 @@ def main():
           id,
           class,
           subclass,
-          names,
           speed_limits,
-          geometry
+          ST_AsWKB(geometry) AS geometry_wkb
         FROM read_parquet('{S3}')
         WHERE bbox.xmin <= {xmax}
           AND bbox.xmax >= {xmin}
@@ -103,7 +98,7 @@ def main():
     for raw in rows:
         row = dict(zip(columns, raw))
         speeds = normalize_speed_limits(row.get("speed_limits"))
-        length = geometry_miles(row.get("geometry"))
+        length = geometry_miles(row.get("geometry_wkb"))
         state = "explicit_speed" if speeds else "no_explicit_speed"
         totals["segments"] += 1
         totals[state + "_segments"] += 1
@@ -115,17 +110,17 @@ def main():
         if len(samples) < 25 and speeds:
             samples.append({"id": row.get("id"), "class": road_class, "speeds_mph": speeds})
 
+    total_miles = totals["explicit_speed_miles"] + totals["no_explicit_speed_miles"]
     report = {
         "release": RELEASE,
         "bbox": BBOX,
         "segments": totals["segments"],
+        "total_road_miles": round(total_miles, 3),
         "explicit_speed_segments": totals["explicit_speed_segments"],
         "no_explicit_speed_segments": totals["no_explicit_speed_segments"],
         "explicit_speed_miles": round(totals["explicit_speed_miles"], 3),
         "no_explicit_speed_miles": round(totals["no_explicit_speed_miles"], 3),
-        "explicit_speed_coverage_percent": round(
-            100 * totals["explicit_speed_segments"] / totals["segments"], 2
-        ) if totals["segments"] else 0,
+        "explicit_speed_coverage_percent_by_miles": round(100 * totals["explicit_speed_miles"] / total_miles, 2) if total_miles else 0,
         "class_breakdown": {
             key: {k: round(v, 3) if k.endswith("miles") else v for k, v in value.items()}
             for key, value in sorted(by_class.items())
