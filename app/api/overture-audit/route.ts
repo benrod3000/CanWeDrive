@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import duckdb from "duckdb";
 
@@ -13,13 +14,7 @@ function all(conn: any, sql: string) {
 }
 
 export async function GET() {
-  const bbox = {
-    west: -117.285,
-    south: 33.045,
-    east: -117.235,
-    north: 33.070,
-  };
-
+  const bbox = { west: -117.285, south: 33.045, east: -117.235, north: 33.070 };
   const source = `s3://overturemaps-us-west-2/release/${RELEASE}/theme=transportation/type=segment/*`;
   const where = `subtype = 'road'
     AND bbox.xmin < ${bbox.east} AND bbox.xmax > ${bbox.west}
@@ -38,7 +33,7 @@ export async function GET() {
         class,
         subclass,
         speed_limits,
-        ST_AsWKB(geometry) AS geometry_wkb
+        ST_Length(ST_Transform(geometry, 'EPSG:4326', 'EPSG:3857')) / 1609.344 AS miles
       FROM read_parquet('${source}')
       WHERE ${where}
     `);
@@ -47,16 +42,6 @@ export async function GET() {
     let milesWithSpeed = 0;
     const classes = new Map<string, { miles: number; withSpeed: number; segments: number }>();
     const speedExamples: Array<{ name: string; class: string; speeds: number[] }> = [];
-
-    const haversine = (a: [number, number], b: [number, number]) => {
-      const r = 3958.7613;
-      const p1 = a[1] * Math.PI / 180;
-      const p2 = b[1] * Math.PI / 180;
-      const dp = (b[1] - a[1]) * Math.PI / 180;
-      const dl = (b[0] - a[0]) * Math.PI / 180;
-      const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
-      return r * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
-    };
 
     const speedsFromValue = (value: any): number[] => {
       const raw = Array.isArray(value) ? value : [];
@@ -72,10 +57,7 @@ export async function GET() {
     };
 
     for (const row of rows) {
-      const geometry = row.geometry_wkb ? (await import("wkx")).Geometry.parse(row.geometry_wkb).toGeoJSON() : null;
-      const coordinates = geometry?.coordinates ?? [];
-      let miles = 0;
-      for (let i = 1; i < coordinates.length; i += 1) miles += haversine(coordinates[i - 1], coordinates[i]);
+      const miles = Number(row.miles ?? 0);
       const speeds = speedsFromValue(row.speed_limits);
       totalMiles += miles;
       if (speeds.length) milesWithSpeed += miles;
@@ -88,7 +70,11 @@ export async function GET() {
       classes.set(key, current);
 
       if (speeds.length && speedExamples.length < 40) {
-        speedExamples.push({ name: row.name ?? "Unnamed", class: key, speeds: speeds.map((v) => Math.round(v * 10) / 10) });
+        speedExamples.push({
+          name: row.name ?? "Unnamed",
+          class: key,
+          speeds: speeds.map((v) => Math.round(v * 10) / 10),
+        });
       }
     }
 
