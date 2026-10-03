@@ -136,7 +136,14 @@ export default function MapView({ route, selectedFrom, selectedTo, selectedStop,
     if (!map || !routeRef.current) return;
     const bounds = new maplibregl.LngLatBounds();
     routeRef.current.geometry.coordinates.forEach((coordinate) => bounds.extend(coordinate));
-    if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 55, maxZoom: 16.5, duration: 700 });
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, {
+        padding: 70,
+        maxZoom: 15.8,
+        duration: 700,
+        linear: false,
+      });
+    }
   }
 
   const previousSelectionsRef = useRef<{ from: string | null; to: string | null; stop: string | null }>({ from: null, to: null, stop: null });
