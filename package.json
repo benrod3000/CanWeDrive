@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/audit-overture.cjs && next build",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "audit:overture": "node scripts/audit-overture.cjs"
   },
   "dependencies": {
     "duckdb": "^1.4.2",
