@@ -16,6 +16,7 @@ function all(sql) {
 // North County San Diego is in UTM zone 11N. Projecting the WGS84
 // centerlines into meters makes the mileage calculation stable and avoids
 // relying on DuckDB's axis-order-sensitive spheroid length overload.
+// Audit-only measurement; this never touches production routing data.
 const lengthMiles = `ST_Length(ST_Transform(geometry, 'EPSG:4326', 'EPSG:32611')) / 1609.344`;
 const hasSpeed = `speed_limits IS NOT NULL AND array_length(speed_limits) > 0`;
 
