@@ -13,7 +13,10 @@ function all(sql) {
   return new Promise((resolve, reject) => conn.all(sql, (err, rows) => err ? reject(err) : resolve(rows)));
 }
 
-const lengthMiles = `ST_Length_Spheroid(geometry) / 1609.344`;
+// North County San Diego is in UTM zone 11N. Projecting the WGS84
+// centerlines into meters makes the mileage calculation stable and avoids
+// relying on DuckDB's axis-order-sensitive spheroid length overload.
+const lengthMiles = `ST_Length(ST_Transform(geometry, 'EPSG:4326', 'EPSG:32611')) / 1609.344`;
 const hasSpeed = `speed_limits IS NOT NULL AND array_length(speed_limits) > 0`;
 
 async function main() {
@@ -61,17 +64,19 @@ async function main() {
   `);
 
   const t = totals[0] || {};
+  const num = (value) => Number(value || 0);
   const report = {
     release: RELEASE,
     bbox: BBOX,
+    projection: 'EPSG:32611 (WGS84 / UTM zone 11N)',
     generatedAt: new Date().toISOString(),
     totals: {
-      segments: Number(t.segments || 0),
-      miles: Number(t.miles || 0),
-      milesWithSpeed: Number(t.miles_with_speed || 0),
-      milesWithoutSpeed: Number(t.miles || 0) - Number(t.miles_with_speed || 0),
-      speedCoveragePct: Number(t.miles) ? Number(t.miles_with_speed || 0) / Number(t.miles) * 100 : 0,
-      segmentsWithSpeed: Number(t.segments_with_speed || 0),
+      segments: num(t.segments),
+      miles: num(t.miles),
+      milesWithSpeed: num(t.miles_with_speed),
+      milesWithoutSpeed: num(t.miles) - num(t.miles_with_speed),
+      speedCoveragePct: num(t.miles) ? num(t.miles_with_speed) / num(t.miles) * 100 : 0,
+      segmentsWithSpeed: num(t.segments_with_speed),
     },
     byClass: byClass.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value]))),
     examples: examples.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value]))),
