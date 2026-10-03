@@ -71,8 +71,8 @@ async function main() {
       speedCoveragePct: Number(t.miles) ? Number(t.miles_with_speed || 0) / Number(t.miles) * 100 : 0,
       segmentsWithSpeed: Number(t.segments_with_speed || 0),
     },
-    byClass,
-    examples,
+    byClass: byClass.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value]))),
+    examples: examples.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value]))),
   };
 
   const outDir = path.join(process.cwd(), 'public', 'audit');
