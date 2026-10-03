@@ -42,3 +42,5 @@ jobs:
           name: overture-speed-coverage
           path: data/overture-audit/
           retention-days: 7
+
+      # Deliberately triggered by this workflow commit so the coverage audit runs automatically.
