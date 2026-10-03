@@ -3,7 +3,7 @@ name: Audit Overture speed coverage
 on:
   push:
     paths:
-      - "scripts/audit-overture.py"
+      - "scripts/audit-overture.cjs"
       - ".github/workflows/audit-overture.yml"
   workflow_dispatch:
     inputs:
@@ -23,24 +23,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.12'
+          node-version: 22
+          cache: npm
 
-      - name: Install audit tooling
-        run: python -m pip install --upgrade duckdb shapely
+      - name: Install dependencies
+        run: npm ci
 
       - name: Audit Overture transportation coverage
         env:
           OVERTURE_RELEASE: ${{ inputs.release || '2026-09-23.1' }}
-        run: python scripts/audit-overture.py
+        run: npm run audit:overture
 
       - name: Upload Overture audit
         uses: actions/upload-artifact@v4
         with:
           name: overture-speed-coverage
-          path: data/overture-audit/
+          path: public/audit/overture-speed-coverage.json
           retention-days: 7
-
-      # Deliberately triggered by this workflow commit so the coverage audit runs automatically.
