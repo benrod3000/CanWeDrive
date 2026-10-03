@@ -2,6 +2,7 @@
 """Audit Overture transportation speed-limit coverage for North County San Diego.
 
 This is intentionally an audit only. It does not change the production road graph.
+The report measures road mileage, not just segment counts.
 """
 
 import csv
