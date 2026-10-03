@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 
 type Coordinate = [number, number];
@@ -25,6 +25,8 @@ type MapViewProps = {
 const ROUTE_COLORS = { eligible: "#ff3b30", unknown: "#00a6ff", blocked: "#111111" };
 
 export default function MapView({ route, selectedFrom, selectedTo, selectedStop, userLocation, pickMode, onMapPick }: MapViewProps) {
+  const [detectedUserLocation, setDetectedUserLocation] = useState<Coordinate | null>(null);
+  const displayUserLocation = userLocation ?? detectedUserLocation;
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const onMapPickRef = useRef(onMapPick);
@@ -32,33 +34,57 @@ export default function MapView({ route, selectedFrom, selectedTo, selectedStop,
   const selectedFromRef = useRef(selectedFrom);
   const selectedToRef = useRef(selectedTo);
   const selectedStopRef = useRef(selectedStop);
-  const userLocationRef = useRef(userLocation);
+  const userLocationRef = useRef<Coordinate | null>(displayUserLocation);
   const hasCenteredOnUserRef = useRef(false);
 
   useEffect(() => { onMapPickRef.current = onMapPick; }, [onMapPick]);
 
   useEffect(() => {
+    userLocationRef.current = displayUserLocation;
     routeRef.current = route;
     selectedFromRef.current = selectedFrom;
     selectedToRef.current = selectedTo;
     selectedStopRef.current = selectedStop;
-    userLocationRef.current = userLocation;
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    updateRouteLayers(map, route, selectedFrom, selectedTo, selectedStop, userLocation);
-  }, [route, selectedFrom, selectedTo, selectedStop, userLocation]);
+    updateRouteLayers(map, route, selectedFrom, selectedTo, selectedStop, displayUserLocation);
+  }, [route, selectedFrom, selectedTo, selectedStop, displayUserLocation]);
+
+  useEffect(() => {
+    if (userLocation) return;
+    if (!navigator.geolocation) return;
+
+    const locate = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setDetectedUserLocation([position.coords.longitude, position.coords.latitude]);
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      );
+    };
+
+    if (!navigator.permissions?.query) {
+      locate();
+      return;
+    }
+
+    void navigator.permissions.query({ name: "geolocation" as PermissionName }).then((permission) => {
+      if (permission.state === "prompt") locate();
+    }).catch(() => locate());
+  }, [userLocation]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !userLocation || hasCenteredOnUserRef.current) return;
+    if (!map || !displayUserLocation || hasCenteredOnUserRef.current) return;
     const focusOnUser = () => {
       if (hasCenteredOnUserRef.current) return;
       hasCenteredOnUserRef.current = true;
-      map.flyTo({ center: userLocation, zoom: 15.5, duration: 900, essential: true });
+      map.flyTo({ center: displayUserLocation, zoom: 15.5, duration: 900, essential: true });
     };
     if (map.isStyleLoaded()) focusOnUser();
     else map.once("load", focusOnUser);
-  }, [userLocation]);
+  }, [displayUserLocation]);
 
   useEffect(() => {
     const map = mapRef.current;
