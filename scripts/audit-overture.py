@@ -42,6 +42,7 @@ def geometry_miles(value):
 
 
 def normalize_speed_limits(value):
+    """Normalize DuckDB's native list<struct> result, with JSON fallback."""
     if value is None:
         return []
     if isinstance(value, str):
@@ -51,18 +52,28 @@ def normalize_speed_limits(value):
             return []
     if isinstance(value, dict):
         value = [value]
+
     speeds = []
     for item in value or []:
         if not isinstance(item, dict):
-            continue
+            try:
+                item = dict(item)
+            except Exception:
+                continue
         max_speed = item.get("max_speed")
-        if isinstance(max_speed, dict):
-            v = max_speed.get("value")
-            unit = str(max_speed.get("unit", "")).lower()
-            if isinstance(v, (int, float)):
-                if unit in {"km/h", "kph", "kmh"}:
-                    v = float(v) * 0.621371192
-                speeds.append(float(v))
+        if max_speed is None:
+            continue
+        if not isinstance(max_speed, dict):
+            try:
+                max_speed = dict(max_speed)
+            except Exception:
+                continue
+        v = max_speed.get("value")
+        unit = str(max_speed.get("unit", "")).lower()
+        if isinstance(v, (int, float)):
+            if unit in {"km/h", "kph", "kmh"}:
+                v = float(v) * 0.621371192
+            speeds.append(float(v))
     return speeds
 
 
