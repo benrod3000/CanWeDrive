@@ -22,6 +22,19 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Show exact revision
+        run: |
+          echo "Audit revision: $(git rev-parse HEAD)"
+          echo "Audit branch: $(git branch --show-current)"
+          if grep -q "geometry_always_xy" scripts/audit-overture.cjs; then
+            echo "ERROR: stale geometry_always_xy setting is present"
+            exit 1
+          fi
+          echo "Verified: stale DuckDB setting is absent"
 
       - name: Set up Node
         uses: actions/setup-node@v4
