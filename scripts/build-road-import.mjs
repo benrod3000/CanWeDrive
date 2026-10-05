@@ -104,13 +104,23 @@ function parseSpeedMph(value) {
 
   const speed = Number(match[0]);
 
-  if (normalized.includes("km/h") || normalized.includes("kph")) {
-    return speed / 1.609344;
+  if (normalized.includes("mph") || normalized.includes("mi/h")) {
+    return speed;
   }
 
-  // This importer is California-specific. Bare OSM speed values are
-  // interpreted as MPH so the stored network can be evaluated consistently.
-  return speed;
+  // OSM's default unit for an unqualified maxspeed value is km/h.
+  // California data should use an explicit "mph" suffix when the source
+  // value is in miles per hour.
+  return speed / 1.609344;
+}
+
+function normalizeSpeedSource(value) {
+  if (!value || typeof value !== "string") return "OpenStreetMap";
+
+  const normalized = value.trim();
+  if (normalized === "'sign") return "sign";
+  if (normalized.toLowerCase() === "sign") return "sign";
+  return normalized;
 }
 
 function getOnewayDirection(tags) {
@@ -283,7 +293,15 @@ async function processLine(line) {
   const maxspeedForward = parseSpeedMph(tags["maxspeed:forward"]);
   const maxspeedBackward = parseSpeedMph(tags["maxspeed:backward"]);
   const conditionalSpeed = tags["maxspeed:conditional"] ?? null;
-  const speedSource = tags["source:maxspeed"] ?? "OpenStreetMap";
+  // source:maxspeed is OSM's documented field for how the speed limit was
+  // determined (e.g. "sign"). maxspeed:type is used in some regions, and
+  // maxspeed:source is a deprecated spelling we can still read safely.
+  const speedSource = normalizeSpeedSource(
+    tags["source:maxspeed"] ??
+      tags["maxspeed:type"] ??
+      tags["maxspeed:source"] ??
+      "OpenStreetMap",
+  );
   const direction = getOnewayDirection(tags);
   const oneway =
     direction !== "both" || String(tags.oneway ?? "").toLowerCase() === "yes";
