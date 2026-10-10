@@ -22,6 +22,7 @@ type GraphRouteRow = {
   edge_name: string | null;
   edge_status: "verified_eligible" | "restricted" | "unknown" | "verified_blocked";
   maxspeed_mph: number | null;
+  speed_source: string | null;
   length_m: number;
   geom_geojson: {
     type?: string;
@@ -143,7 +144,7 @@ async function fetchGraphRoute(from: Coordinate, to: Coordinate) {
   const supabaseUrl = "https://bsnspyjsirfayypcvpmc.supabase.co";
   const supabaseKey = "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/route_lsv_candidate`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/route_lsv_candidate_with_source`, {
     method: "POST",
     headers: {
       apikey: supabaseKey,
@@ -171,7 +172,7 @@ async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = tru
     coordinates: Coordinate[];
     status: "eligible" | "blocked" | "unknown";
     speedMph: number | null;
-    source: "OpenStreetMap" | null;
+    source: string | null;
   }> = [];
   let distanceMeters = 0;
   let unknownMiles = 0;
@@ -195,7 +196,7 @@ async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = tru
       coordinates,
       status,
       speedMph: row.maxspeed_mph === null ? null : Math.round(row.maxspeed_mph * 10) / 10,
-      source: row.maxspeed_mph === null ? null : "OpenStreetMap",
+      source: row.maxspeed_mph === null ? null : row.speed_source,
     });
   }
 
