@@ -31,6 +31,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Record tested commit
+        run: |
+          mkdir -p replay-results
+          git rev-parse HEAD | tee replay-results/tested-commit.txt
       - uses: supabase/setup-cli@v1
         with:
           version: 2.54.11
