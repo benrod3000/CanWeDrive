@@ -39,8 +39,8 @@ type RouteResult = {
 };
 
 const STATUS_COPY = {
-  eligible: { label: "ROUTE FOUND", title: "Yes — this route fits the LSV routing rules.", tone: "eligible" },
-  unknown: { label: "PARTIALLY VERIFIED", title: "A route was found, but some speed data is missing.", tone: "unknown" },
+  eligible: { label: "ROUTE FOUND", title: "Mapped road speeds on this route are at or below 35 MPH.", tone: "eligible" },
+  unknown: { label: "SPEED DATA INCOMPLETE", title: "A route was found, but some speed-limit data is missing.", tone: "unknown" },
   blocked: { label: "OVER 35 MPH", title: "This route includes a road mapped above 35 MPH.", tone: "blocked" },
 } as const;
 
@@ -216,7 +216,7 @@ export default function Home() {
   }
 
   const status = route ? STATUS_COPY[route.status] : null;
-  const verifiedPercent = route && route.distanceMiles > 0
+  const mappedSpeedPercent = route && route.distanceMiles > 0
     ? Math.round(((route.distanceMiles - route.unknownMiles) / route.distanceMiles) * 100)
     : 0;
 
@@ -356,7 +356,7 @@ export default function Home() {
 
             {route.status === "unknown" && (
               <div className="verification-warning">
-                <strong>{100 - verifiedPercent}% UNVERIFIED</strong>
+                <strong>{100 - mappedSpeedPercent}% UNKNOWN SPEED DATA</strong>
                 <span>{route.unknownMiles.toFixed(1)} miles have no usable posted-speed data.</span>
               </div>
             )}
@@ -364,7 +364,7 @@ export default function Home() {
             <div className="trip-summary">
               <div><strong>{route.durationMinutes === null ? "—" : `${route.durationMinutes} MIN`}</strong><span>EST. TIME</span></div>
               <div><strong>{route.distanceMiles.toFixed(1)} MI</strong><span>DISTANCE</span></div>
-              <div><strong>{verifiedPercent}%</strong><span>VERIFIED</span></div>
+              <div><strong>{mappedSpeedPercent}%</strong><span>MAPPED SPEED DATA</span></div>
             </div>
 
             <div className="directions-section">
@@ -408,7 +408,7 @@ export default function Home() {
                   <div><span>TO</span><strong>{searchedTo}</strong></div>
                 </div>
 
-                <p className="data-note">Estimated using mapped speed limits. Streets without usable speed data are estimated at 25 MPH. Freeways are excluded from LSV route planning. Local signs and restrictions can override map data.</p>
+                <p className="data-note">Estimated using mapped speed data. The mapped-data percentage is not a field verification of road signs. Streets without usable speed data are estimated at 25 MPH. Freeways are excluded from LSV route planning. Local signs and restrictions can override map data.</p>
               </div>
             </details>
           </section>
