@@ -40,6 +40,10 @@ jobs:
         run: |
           mkdir -p replay-results
           supabase --version | tee replay-results/supabase-cli-version.txt
+      - name: Record pinned CLI version
+        run: |
+          mkdir -p replay-results
+          supabase --version | tee replay-results/supabase-cli-version.txt
       - name: Install local PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Start LOCAL Supabase (no link or remote credentials)
