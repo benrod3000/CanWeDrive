@@ -1,4 +1,4 @@
-name: Temporary isolated migration replay
+name: Isolated migration replay
 
 on:
   workflow_dispatch:
@@ -8,8 +8,6 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/ci-isolated-replay.sh'
-      - 'scripts/replay-production-baseline-*.json'
-      - 'scripts/replay-platform-allowlist.json'
       - '.github/workflows/isolated-migration-replay.yml'
 
 permissions:
@@ -17,7 +15,6 @@ permissions:
 
 jobs:
   replay:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.ref == 'repair/supabase-migration-history-20261010' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 55
     env:
@@ -74,7 +71,7 @@ jobs:
             exit "$status"
           fi
           echo "REPLAY SUCCEEDED"
-      - name: Collect baseline, versions, and routing behavior
+      - name: Verify migration history and API-role routing smoke
         shell: bash
         run: bash scripts/ci-isolated-replay.sh
       - name: Upload replay evidence (including failures)
