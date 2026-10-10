@@ -189,12 +189,30 @@ function scoreResult(
   return score;
 }
 
+// Keep requests to the public Nominatim service serialized and spaced. A burst
+// of parallel fallbacks can trigger rate limits and make address search appear
+// broken even when the query itself is valid.
+let nominatimQueue: Promise<void> = Promise.resolve();
+let lastNominatimRequestAt = 0;
+
+async function waitForNominatimSlot() {
+  const previous = nominatimQueue;
+  let release!: () => void;
+  nominatimQueue = new Promise<void>((resolve) => { release = resolve; });
+  await previous;
+  const waitMs = Math.max(0, 1100 - (Date.now() - lastNominatimRequestAt));
+  if (waitMs > 0) await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+  lastNominatimRequestAt = Date.now();
+  release();
+}
+
 async function searchNominatim(
   query: string,
   currentLocation: [number, number] | null,
   bounded: boolean,
   poiOnly = false,
 ) {
+  await waitForNominatimSlot();
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
   url.searchParams.set("format", "jsonv2");
@@ -225,20 +243,13 @@ async function searchBusinessName(
   currentLocation: [number, number] | null,
 ) {
   const fallbackCity = nearestNorthCountyCity(currentLocation);
-  const queries = [
-    { text: query, bounded: true, poiOnly: true },
-    { text: query, bounded: false, poiOnly: true },
-    { text: `${query} ${fallbackCity} California`, bounded: true, poiOnly: true },
-    { text: `${query} ${fallbackCity} California`, bounded: false, poiOnly: true },
-  ];
 
-  const results = await Promise.all(
-    queries.map(({ text, bounded, poiOnly }) =>
-      searchNominatim(text, currentLocation, bounded, poiOnly),
-    ),
-  );
+  // Start with one local POI search. Only broaden the search when it returns
+  // nothing, instead of firing four requests at once and hitting rate limits.
+  const localResults = await searchNominatim(query, currentLocation, true, true);
+  if (localResults.length) return localResults;
 
-  return results.flat();
+  return searchNominatim(`${query} ${fallbackCity} California`, currentLocation, false, true);
 }
 
 export async function GET(request: Request) {
@@ -317,11 +328,13 @@ export async function GET(request: Request) {
       // Search ordinary addresses first, then run a dedicated POI pass for
       // business names. Do not let an unrelated first result suppress the
       // locality/POI retries.
-      const [addressResults, businessResults] = await Promise.all([
-        searchNominatim(query, currentLocation, true),
-        searchBusinessName(query, currentLocation),
-      ]);
-      rawResults = [...addressResults, ...businessResults];
+      // Search addresses first. Only run a POI fallback when the address
+      // search has no matches; parallel fallbacks can exceed Nominatim's
+      // request rate and cause intermittent empty/error responses.
+      rawResults = await searchNominatim(query, currentLocation, true);
+      if (!rawResults.length) {
+        rawResults = await searchBusinessName(query, currentLocation);
+      }
     }
 
     const preferredCity = placeFallback?.city ?? null;
