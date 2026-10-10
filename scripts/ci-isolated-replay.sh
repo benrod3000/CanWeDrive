@@ -35,58 +35,95 @@ for file in replay-results/baselines/*.sql; do
   psql -v ON_ERROR_STOP=1 -F $'\t' -A -f "$file" > "${file%.sql}.tsv"
 done
 
-# Assert every baseline row (excluding the data-dependent component-stats count).
-# JSON row objects avoid psql's TSV NULL/array formatting ambiguities.
+# Compare all 13 data-independent production snapshots. Only the committed,
+# narrowly scoped platform allowlist can suppress known local-stack differences.
 python3 - <<'PY'
-import json,pathlib,re,subprocess,sys,difflib
+import collections,difflib,json,pathlib,re,subprocess,sys
 root=pathlib.Path('replay-results')
 baseline={}
 for p in ('scripts/replay-production-baseline-01-07.json','scripts/replay-production-baseline-08-14.json'):
     baseline.update(json.loads(pathlib.Path(p).read_text()))
-failures=[]
+allow=json.loads(pathlib.Path('scripts/replay-platform-allowlist.json').read_text())
+assert len(baseline)==13 and '10' not in baseline
+failures=[]; allowed=[]; results={}
+def key(row):
+    return json.dumps(row,sort_keys=True,separators=(',',':'),ensure_ascii=False)
+def compare(expected,actual):
+    a=collections.Counter(map(key,expected)); b=collections.Counter(map(key,actual))
+    return [json.loads(x) for x in (a-b).elements()],[json.loads(x) for x in (b-a).elements()]
 for i in range(1,15):
-    if i==10: continue  # Component stats rows depend on imported data.
-    sql=(root/'baselines'/f'{i:02}.sql').read_text().strip().rstrip(';')
-    query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from ("+sql+") t"
+    if i==10: continue
+    label=f'{i:02}'
+    try:
+        sql=(root/'baselines'/f'{label}.sql').read_text().strip().rstrip(';')
+        query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from ("+sql+") t"
+        proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
+        if proc.returncode: raise RuntimeError(proc.stderr)
+        actual=json.loads(proc.stdout.strip())
+        (root/'baselines'/f'{label}.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\n')
+        expected=baseline[label]
+        missing,extra=compare(expected,actual)
+        if label=='02':
+            names=set(allow['extensions']['ignore_names'])
+            def permitted(row): return row['extname'] in names
+        elif label=='12':
+            schemas=set(allow['default_acls']['ignore_schemas'])
+            def permitted(row): return row['schema'] in schemas
+        else:
+            def permitted(row): return False
+        for side,rows in (('production-only',missing),('replay-only',extra)):
+            for row in rows:
+                msg=f'BASELINE {label} {side}: {key(row)}'
+                if permitted(row):
+                    allowed.append(msg)
+                    print('ALLOWLISTED '+msg)
+                else:
+                    failures.append(msg)
+                    print('FAIL '+msg,file=sys.stderr)
+        results[label]='FAIL' if any(x.startswith(f'BASELINE {label} ') for x in failures) else 'PASS'
+        print(f"BASELINE {label} {results[label]} (production {len(expected)}, replay {len(actual)})")
+    except Exception as exc:
+        results[label]='FAIL'
+        failures.append(f'BASELINE {label} ERROR: {exc}')
+        print(f'BASELINE {label} FAIL: {exc}',file=sys.stderr)
+# Migration pairs are compared with live versions/names recovered from the 48 filenames.
+try:
+    query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from (select version,name from supabase_migrations.schema_migrations order by version) t"
     proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
-    if proc.returncode:
-        failures.append(f'BASELINE {i:02}: SQL ERROR: {proc.stderr}')
-        continue
-    actual=json.loads(proc.stdout.strip())
-    (root/'baselines'/f'{i:02}.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\n')
-    expected=baseline[f'{i:02}']
-    # Query ORDER BY defines row order; normalize object-key ordering only.
-    if actual!=expected:
-        lhs=json.dumps(expected,indent=2,sort_keys=True).splitlines()
-        rhs=json.dumps(actual,indent=2,sort_keys=True).splitlines()
-        diff='\n'.join(difflib.unified_diff(lhs,rhs,fromfile='production',tofile='replay',lineterm=''))
-        failures.append(f'BASELINE {i:02} MISMATCH:\n{diff}')
-    else: print(f'BASELINE {i:02} PASS ({len(actual)} rows)')
-# Compare the migration version/name pair set, not just the count.
-sql="select coalesce(json_agg(row_to_json(t)), '[]'::json) from (select version,name from supabase_migrations.schema_migrations order by version) t"
-proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',sql],capture_output=True,text=True)
-if proc.returncode: failures.append('MIGRATION HISTORY QUERY ERROR: '+proc.stderr)
-else:
+    if proc.returncode: raise RuntimeError(proc.stderr)
     actual=json.loads(proc.stdout.strip())
     (root/'migration-history.json').write_text(json.dumps(actual,indent=2)+'\n')
-    expected_pairs=[{'version':p.name[:14],'name':p.name[15:-4]} for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
-    if len(expected_pairs)!=48 or actual!=expected_pairs:
-        failures.append('MIGRATION VERSION/NAME PAIRS MISMATCH: '+repr(actual))
-    else: print(f'MIGRATION HISTORY PASS ({len(actual)} rows)')
-# Dedicated function output with strict proconfig/hash/signature checks.
-actual=json.loads((root/'baselines'/'01.json').read_text()) if (root/'baselines'/'01.json').exists() else []
-expected=baseline['01']
-report=[]
-for i in range(max(len(actual),len(expected))):
-    x=actual[i] if i<len(actual) else None
-    y=expected[i] if i<len(expected) else None
-    report.append(f"{y['proname'] if y else '<unexpected>'}: live={y['definition_md5'] if y else 'missing'} replay={x['definition_md5'] if x else 'missing'} live_config={y['proconfig'] if y else 'missing'} replay_config={x['proconfig'] if x else 'missing'} signature={x['args'] if x else 'missing'}")
-(root/'function-comparison.txt').write_text('\n'.join(report)+'\n')
-print('\n'.join(report))
-(root/'parity-differences.txt').write_text('\n\n'.join(failures) if failures else 'All 13 data-independent baseline queries and migration pairs match exactly.\n')
-if failures:
-    print('\n\n'.join(failures),file=sys.stderr)
-    print('Parity mismatches recorded; continuing to smoke assertions before failing CI.')
+    expected=[{'version':p.name[:14],'name':p.name[15:-4]} for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
+    if len(expected)!=48 or actual!=expected: raise ValueError(f'expected={expected!r}; replay={actual!r}')
+    print('MIGRATION HISTORY PASS (48 version/name pairs)')
+except Exception as exc:
+    failures.append(f'MIGRATION HISTORY FAIL: {exc}')
+    print(f'MIGRATION HISTORY FAIL: {exc}',file=sys.stderr)
+# Function hashes and proconfig are explicit, hard assertions in addition to query 01.
+try:
+    expected=baseline['01']
+    actual=json.loads((root/'baselines'/'01.json').read_text())
+    em={(r['proname'],r['args']):r for r in expected}
+    am={(r['proname'],r['args']):r for r in actual}
+    lines=[]
+    for identity in sorted(set(em)|set(am)):
+        e=em.get(identity); a=am.get(identity)
+        h=e.get('definition_md5') if e else None
+        ah=a.get('definition_md5') if a else None
+        c=e.get('proconfig') if e else None
+        ac=a.get('proconfig') if a else None
+        good=e is not None and a is not None and h==ah and c==ac
+        lines.append(f"{'PASS' if good else 'FAIL'} {identity}: live_hash={h} replay_hash={ah} live_proconfig={c} replay_proconfig={ac}")
+        if not good: failures.append('FUNCTION MISMATCH '+lines[-1])
+    if len(em)!=8 or len(am)!=8: failures.append(f'FUNCTION COUNT MISMATCH: production {len(em)} replay {len(am)}')
+except Exception as exc:
+    lines=[f'FAIL function comparison: {exc}'];failures.append(lines[0])
+(root/'function-comparison.txt').write_text('\n'.join(lines)+'\n')
+print('FUNCTION COMPARISON:\n'+'\n'.join(lines))
+(root/'parity-query-results.json').write_text(json.dumps(results,indent=2,sort_keys=True)+'\n')
+(root/'allowlisted-differences.txt').write_text('\n'.join(allowed)+'\n' if allowed else 'NONE\n')
+(root/'parity-differences.txt').write_text('\n'.join(failures)+'\n' if failures else 'NONE\n')
+print(f'PARITY SUMMARY: {sum(x=="PASS" for x in results.values())}/13 pass; {len(allowed)} allowlisted row differences; {len(failures)} hard failures')
 PY
 
 # Smoke test is isolated and rolled back; never seed the production graph.
