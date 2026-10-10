@@ -37,3 +37,85 @@ order by 1, 2, 3;
 **Important:** `pg_get_functiondef` formatting and hashes can differ across PostgreSQL versions even when behavior matches. When hashes differ, compare normalized definitions and runtime behavior manually; do not treat a hash mismatch as conclusive failure.
 
 The migration SQL was recovered from `supabase_migrations.schema_migrations.statements`. Production road graph and migration history must remain untouched during validation.
+
+
+## Additional production schema and security baseline
+
+Capture the following read-only queries from **both** production and the isolated replay database. Compare sorted rows, including role-specific grants and RLS flags; do not assume a successful SQL replay means equivalent permissions. The production snapshot taken on 2026-10-10 contained 93 public columns, 32 public indexes, 7 public policies, 154 role-table grant rows for the selected grantees, and 993 `lsv_component_stats` records. The last count is **data**, not a migration-only invariant: seed comparable component data before comparing counts.
+
+```sql
+-- Extensions: schema placement matters for PostGIS/pgRouting resolution.
+select e.extname, n.nspname as schema, e.extversion
+from pg_extension e join pg_namespace n on n.oid=e.extnamespace
+order by e.extname;
+
+-- Tables, columns, types, nullability, defaults.
+select table_schema,table_name,column_name,data_type,udt_name,is_nullable,column_default
+from information_schema.columns where table_schema='public'
+order by table_name,ordinal_position;
+
+-- Index definitions.
+select schemaname,tablename,indexname,indexdef
+from pg_indexes where schemaname='public'
+order by tablename,indexname;
+
+-- RLS policies AND enabled/forced flags.
+select schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+from pg_policies where schemaname='public'
+order by tablename,policyname;
+select c.relname,c.relrowsecurity,c.relforcerowsecurity
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and c.relkind in ('r','p')
+order by c.relname;
+
+-- Table privileges: compare exact grants, including PUBLIC.
+select table_schema,table_name,grantee,privilege_type
+from information_schema.role_table_grants
+where table_schema='public'
+  and grantee in ('anon','authenticated','service_role','PUBLIC')
+order by table_name,grantee,privilege_type;
+
+-- Function privileges are separate from table privileges.
+select routine_schema,routine_name,grantee,privilege_type
+from information_schema.role_routine_grants
+where routine_schema='public'
+order by routine_name,grantee,privilege_type;
+
+-- Component columns and component-stats state.
+select table_name,column_name,data_type,udt_name
+from information_schema.columns
+where table_schema='public'
+  and (column_name ilike '%component%' or table_name='lsv_component_stats')
+order by table_name,ordinal_position;
+select count(*) as component_stats_rows from public.lsv_component_stats;
+```
+
+Production extension placement observed: `postgis` and `pgrouting` both in `extensions` (versions 3.3.7 and 3.4.1 respectively); `pgcrypto`, `uuid-ossp`, and `pg_stat_statements` also in `extensions`. Supabase-managed extensions include `supabase_vault` in `vault` and `plpgsql` in `pg_catalog`. Match compatible versions and schema placement; managed extensions may vary between environments.
+
+## Role-level runtime configuration
+
+These settings are **not guaranteed to be created by migration files**. Establish them on the isolated instance *before replay* using the equivalent supported role configuration and confirm the result with:
+
+```sql
+select rolname,rolconfig
+from pg_roles
+where rolname in ('postgres','anon','authenticated','service_role')
+order by rolname;
+```
+
+Live production baseline:
+
+- `postgres`: `search_path="$user", public, extensions`
+- `anon`: `statement_timeout=3s`
+- `authenticated`: `statement_timeout=8s`
+- `service_role`: no role-level override (`NULL`)
+
+Use a Supabase-compatible isolated environment with these roles. Do not run `ALTER ROLE` against production as part of validation.
+
+## Routing behavior smoke test
+
+A clean migration replay creates schema and functions, **not the imported road graph**. First seed a tiny, deterministic, non-production graph containing a connected legal path, an unknown-speed segment, and an ineligible segment. Use the same seed in two isolated databases if comparing outputs; do not assume the production graph has identical seed IDs.
+
+For a production-vs-replay behavior comparison, select a known-good real route's start/end coordinates and invoke the same `public.route_lsv_candidate` function with matching parameters in each environment **only after** seeding equivalent road nodes/edges. Compare ordered edge geometry, statuses, speed fields, and total length rather than database-generated edge IDs. Use a read-only transaction for the production invocation and do not change production road data. Verify that restricted/ineligible roads are excluded and unknown-speed handling respects `allow_unknown`.
+
+Keep this PR in draft until a full replay, schema/permission parity checks, and routing behavior checks are completed.
