@@ -6,8 +6,8 @@ root.mkdir(parents=True,exist_ok=True)
 def feature(way,nodes,tags):
     return {"type":"Feature","properties":{"@id":str(way),"@way_nodes":nodes,**tags},
             "geometry":{"type":"LineString","coordinates":[[-117.30+i*.001,33.05+(way-9100)*.001] for i in range(len(nodes))]}}
-# Five cases: bidirectional, forward one-way, reverse one-way,
-# access-restricted, and directional/raw-speed provenance.
+# Six cases: bidirectional, forward one-way, reverse one-way,
+# private hard block, directional/raw-speed provenance, destination restriction.
 cases=[
  feature(9101,[101,102],{"highway":"residential","maxspeed":"25 mph","name":"Two way"}),
  feature(9102,[201,202],{"highway":"residential","oneway":"yes","maxspeed":"20 mph"}),
@@ -74,12 +74,14 @@ sql.write_text(
  THEN RAISE EXCEPTION 'real loader inserted wrong number of edges'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9105 AND osm_source_maxspeed_raw='sign')<>2
  THEN RAISE EXCEPTION 'raw speed tags lost in real insert'; END IF;
- IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9104 AND lsv_status='restricted')<>2
- THEN RAISE EXCEPTION 'access restriction lost in real insert'; END IF;
+ IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9104 AND lsv_status='verified_blocked')<>2
+ THEN RAISE EXCEPTION 'private hard-block status lost in real insert'; END IF;
+ IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9106 AND lsv_status='restricted')<>2
+ THEN RAISE EXCEPTION 'destination restriction lost in real insert'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9106
    AND (x1_m IS NULL OR y1_m IS NULL OR x2_m IS NULL OR y2_m IS NULL))
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9105
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9106
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
@@ -107,5 +109,5 @@ with open(root/"staging-output.txt","w") as out:
 if result.returncode:
     print((root/"staging-output.txt").read_text()[-5000:])
 check("real loader insert and post-import inside rolled-back CI transaction",result.returncode==0)
-(root/"results.json").write_text(json.dumps({"cases":5,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
+(root/"results.json").write_text(json.dumps({"cases":6,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
 print("IMPORTER SAMPLE TEST PASS",flush=True)
