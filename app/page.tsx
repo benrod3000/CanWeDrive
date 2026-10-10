@@ -20,7 +20,7 @@ type RouteResult = {
       coordinates: Coordinate[];
       status: "eligible" | "blocked" | "unknown";
       speedMph: number | null;
-      source: "OpenStreetMap" | null;
+      source: string | null;
     }>;
     directions: Direction[];
     terrain: {
