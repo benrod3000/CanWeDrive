@@ -326,15 +326,18 @@ export async function GET(request: Request) {
         rawResults = await searchNominatim(placeFallback.name, currentLocation, false);
       }
     } else {
-      // Search ordinary addresses first, then run a dedicated POI pass for
-      // business names. Do not let an unrelated first result suppress the
-      // locality/POI retries.
-      // Search addresses first. Only run a POI fallback when the address
-      // search has no matches; parallel fallbacks can exceed Nominatim's
-      // request rate and cause intermittent empty/error responses.
       rawResults = await searchNominatim(query, currentLocation, true);
-      if (!rawResults.length) {
-        rawResults = await searchBusinessName(query, currentLocation);
+
+      // Business and place-name searches often return generic address matches.
+      // Run a throttled POI pass for non-address-like queries and merge the
+      // candidates so the relevance scorer can choose the better match.
+      const looksLikeAddress =
+        /\\d/.test(query) ||
+        /\\b(st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|way|ct|court|cir|circle|pl|place|hwy|highway)\\b/i.test(query);
+
+      if (!looksLikeAddress || !rawResults.length) {
+        const poiResults = await searchBusinessName(query, currentLocation);
+        rawResults = [...rawResults, ...poiResults];
       }
     }
 
