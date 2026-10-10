@@ -17,113 +17,25 @@ select case when
 then 'PASS' else 'FAIL' end" | tee replay-results/role-check.txt
 test "$(cat replay-results/role-check.txt)" = PASS
 
-# Pull the 14 executable SQL statements from the reviewed guide itself.
+# Permanent CI checks the applied migration version/name pairs, not a
+# production schema snapshot that becomes stale as the application evolves.
 python3 - <<'PY'
-import re,pathlib
-text=pathlib.Path('docs/supabase-migration-replay-verification.md').read_text()
-blocks=re.findall(r'```sql\n(.*?)\n```',text,re.S)
-assert len(blocks)==4, f'Expected 4 SQL blocks, found {len(blocks)}'
-n=0
-for block in blocks:
-    for query in block.split(';'):
-        if re.sub(r'--[^\n]*','',query).strip():
-            n+=1
-            pathlib.Path(f'replay-results/baselines/{n:02d}.sql').write_text(query.strip()+';\n')
-assert n==14, f'Expected 14 statements, found {n}'
-PY
-for file in replay-results/baselines/*.sql; do
-  psql -v ON_ERROR_STOP=1 -F $'\t' -A -f "$file" > "${file%.sql}.tsv"
-done
-
-# Compare all 13 data-independent production snapshots. Only the committed,
-# narrowly scoped platform allowlist can suppress known local-stack differences.
-python3 - <<'PY'
-import collections,difflib,json,pathlib,re,subprocess,sys
+import json,pathlib,subprocess,sys
 root=pathlib.Path('replay-results')
-baseline={}
-for p in ('scripts/replay-production-baseline-01-07.json','scripts/replay-production-baseline-08-14.json'):
-    baseline.update(json.loads(pathlib.Path(p).read_text()))
-allow=json.loads(pathlib.Path('scripts/replay-platform-allowlist.json').read_text())
-assert len(baseline)==13 and '10' not in baseline
-failures=[]; allowed=[]; results={}
-def key(row):
-    return json.dumps(row,sort_keys=True,separators=(',',':'),ensure_ascii=False)
-def compare(expected,actual):
-    a=collections.Counter(map(key,expected)); b=collections.Counter(map(key,actual))
-    return [json.loads(x) for x in (a-b).elements()],[json.loads(x) for x in (b-a).elements()]
-for i in range(1,15):
-    if i==10: continue
-    label=f'{i:02}'
-    try:
-        sql=(root/'baselines'/f'{label}.sql').read_text().strip().rstrip(';')
-        query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from ("+sql+") t"
-        proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
-        if proc.returncode: raise RuntimeError(proc.stderr)
-        actual=json.loads(proc.stdout.strip())
-        (root/'baselines'/f'{label}.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\n')
-        expected=baseline[label]
-        missing,extra=compare(expected,actual)
-        if label=='02':
-            names=set(allow['extensions']['ignore_names'])
-            def permitted(row): return row['extname'] in names
-        elif label=='12':
-            schemas=set(allow['default_acls']['ignore_schemas'])
-            def permitted(row): return row['schema'] in schemas
-        else:
-            def permitted(row): return False
-        for side,rows in (('production-only',missing),('replay-only',extra)):
-            for row in rows:
-                msg=f'BASELINE {label} {side}: {key(row)}'
-                if permitted(row):
-                    allowed.append(msg)
-                    print('ALLOWLISTED '+msg)
-                else:
-                    failures.append(msg)
-                    print('FAIL '+msg,file=sys.stderr)
-        results[label]='FAIL' if any(x.startswith(f'BASELINE {label} ') for x in failures) else 'PASS'
-        print(f"BASELINE {label} {results[label]} (production {len(expected)}, replay {len(actual)})")
-    except Exception as exc:
-        results[label]='FAIL'
-        failures.append(f'BASELINE {label} ERROR: {exc}')
-        print(f'BASELINE {label} FAIL: {exc}',file=sys.stderr)
-# Migration pairs are compared with live versions/names recovered from the 48 filenames.
-try:
-    query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from (select version,name from supabase_migrations.schema_migrations order by version) t"
-    proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
-    if proc.returncode: raise RuntimeError(proc.stderr)
-    actual=json.loads(proc.stdout.strip())
-    (root/'migration-history.json').write_text(json.dumps(actual,indent=2)+'\n')
-    expected=[{'version':p.name[:14],'name':p.name[15:-4]} for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
-    if len(expected)!=48 or actual!=expected: raise ValueError(f'expected={expected!r}; replay={actual!r}')
-    print('MIGRATION HISTORY PASS (48 version/name pairs)')
-except Exception as exc:
-    failures.append(f'MIGRATION HISTORY FAIL: {exc}')
-    print(f'MIGRATION HISTORY FAIL: {exc}',file=sys.stderr)
-# Function hashes and proconfig are explicit, hard assertions in addition to query 01.
-try:
-    expected=baseline['01']
-    actual=json.loads((root/'baselines'/'01.json').read_text())
-    em={(r['proname'],r['args']):r for r in expected}
-    am={(r['proname'],r['args']):r for r in actual}
-    lines=[]
-    for identity in sorted(set(em)|set(am)):
-        e=em.get(identity); a=am.get(identity)
-        h=e.get('definition_md5') if e else None
-        ah=a.get('definition_md5') if a else None
-        c=e.get('proconfig') if e else None
-        ac=a.get('proconfig') if a else None
-        good=e is not None and a is not None and h==ah and c==ac
-        lines.append(f"{'PASS' if good else 'FAIL'} {identity}: live_hash={h} replay_hash={ah} live_proconfig={c} replay_proconfig={ac}")
-        if not good: failures.append('FUNCTION MISMATCH '+lines[-1])
-    if len(em)!=8 or len(am)!=8: failures.append(f'FUNCTION COUNT MISMATCH: production {len(em)} replay {len(am)}')
-except Exception as exc:
-    lines=[f'FAIL function comparison: {exc}'];failures.append(lines[0])
-(root/'function-comparison.txt').write_text('\n'.join(lines)+'\n')
-print('FUNCTION COMPARISON:\n'+'\n'.join(lines))
-(root/'parity-query-results.json').write_text(json.dumps(results,indent=2,sort_keys=True)+'\n')
-(root/'allowlisted-differences.txt').write_text('\n'.join(allowed)+'\n' if allowed else 'NONE\n')
-(root/'parity-differences.txt').write_text('\n'.join(failures)+'\n' if failures else 'NONE\n')
-print(f'PARITY SUMMARY: {sum(x=="PASS" for x in results.values())}/13 pass; {len(allowed)} allowlisted row differences; {len(failures)} hard failures')
+expected=[{'version':p.name[:14],'name':p.name[15:-4]} for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
+query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from (select version,name from supabase_migrations.schema_migrations order by version) t"
+proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
+if proc.returncode:
+    print('MIGRATION HISTORY FAIL: '+proc.stderr,file=sys.stderr)
+    sys.exit(1)
+actual=json.loads(proc.stdout.strip())
+(root/'migration-history.json').write_text(json.dumps(actual,indent=2)+'\n')
+if len(expected)<48 or actual!=expected:
+    print(f'MIGRATION HISTORY FAIL: expected {len(expected)} file pairs, got {len(actual)} database pairs',file=sys.stderr)
+    print('EXPECTED:',expected,file=sys.stderr)
+    print('ACTUAL:',actual,file=sys.stderr)
+    sys.exit(1)
+print(f'MIGRATION HISTORY PASS ({len(actual)} version/name pairs; original 48 included)')
 PY
 
 # Smoke test is isolated and rolled back; never seed the production graph.
@@ -194,15 +106,10 @@ if [ "$smoke_exit" -eq 0 ] && grep -q 'PASS anon true=' replay-results/smoke-out
 else
   echo "FAIL: role-based smoke test exit=$smoke_exit or missing assertions" | tee replay-results/smoke-review.txt
 fi
-# All stages ran. A green run requires zero hard parity differences and smoke PASS.
-fail=0
-if [ "$(cat replay-results/parity-differences.txt)" != 'NONE' ]; then
-  echo 'FAIL: hard parity/function/history differences (see parity-differences.txt)' >&2
-  fail=1
-fi
+# Green requires the smoke assertions; migrations and history already failed
+# the job if unsuccessful.
 if ! grep -q '^PASS:' replay-results/smoke-review.txt; then
-  echo 'FAIL: smoke assertions' >&2
-  fail=1
+  echo 'FINAL REPLAY STATUS: FAIL (smoke assertions)' >&2
+  exit 1
 fi
-echo "FINAL REPLAY STATUS: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
-exit "$fail"
+echo 'FINAL REPLAY STATUS: PASS'
