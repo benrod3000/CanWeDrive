@@ -13,6 +13,7 @@ cases=[
  feature(9102,[201,202],{"highway":"residential","oneway":"yes","maxspeed":"20 mph"}),
  feature(9103,[301,302],{"highway":"residential","oneway":"-1","maxspeed":"30 mph"}),
  feature(9104,[401,402],{"highway":"service","access":"private","maxspeed":"15 mph"}),
+ feature(9106,[601,602],{"highway":"service","access":"destination","maxspeed":"15 mph"}),
  feature(9105,[501,502],{"highway":"residential","maxspeed":"25 mph","maxspeed:forward":"30 mph",
    "maxspeed:backward":"20 mph","source:maxspeed":"sign","maxspeed:type":"US:urban",
    "maxspeed:source":"survey","name":'A "quoted", road'}),
@@ -23,14 +24,15 @@ subprocess.run(["node","scripts/build-road-import.mjs",str(src),str(root)],check
 def rows(p):
     with open(p,newline="") as f: return list(csv.DictReader(f))
 edges=rows(root/"edges.csv"); nodes=rows(root/"nodes.csv")
-by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9106)}
+by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9107)}
 def check(label,ok):
     print(("PASS " if ok else "FAIL ")+label,flush=True)
     if not ok: raise AssertionError(label)
 check("case 1 bidirectional",len(by[9101])==2 and [e["direction"] for e in by[9101]]==["forward","backward"])
 check("case 2 forward one-way",len(by[9102])==1 and by[9102][0]["direction"]=="forward")
 check("case 3 reverse one-way",len(by[9103])==1 and by[9103][0]["direction"]=="backward" and by[9103][0]["source_osm_node_id"]=="302")
-check("case 4 access restriction",len(by[9104])==2 and all(e["lsv_status"]=="restricted" for e in by[9104]))
+check("case 4 access restriction",len(by[9104])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9104]))
+check("case 6 destination access restricted",len(by[9106])==2 and all(e["lsv_status"]=="restricted" for e in by[9106]))
 expected_raw={"osm_maxspeed_raw":"25 mph","osm_maxspeed_forward_raw":"30 mph",
  "osm_maxspeed_backward_raw":"20 mph","osm_source_maxspeed_raw":"sign",
  "osm_maxspeed_type_raw":"US:urban","osm_maxspeed_source_raw":"survey"}
@@ -38,7 +40,7 @@ check("case 5 raw speed tags and directional speeds",
  len(by[9105])==2 and all(all(e[k]==v for k,v in expected_raw.items()) for e in by[9105])
  and [round(float(e["maxspeed_mph"])) for e in by[9105]]==[30,20]
  and all(e["speed_source"]=="sign" for e in by[9105]))
-check("CSV quoting, node references and totals",len(edges)==8 and len(nodes)==10
+check("CSV quoting, node references and totals",len(edges)==10 and len(nodes)==12
  and all(e["source_osm_node_id"] in {n["osm_node_id"] for n in nodes} and e["target_osm_node_id"] in {n["osm_node_id"] for n in nodes} for e in edges)
  and any(e["name"]=='A "quoted", road' for e in edges))
 # The real loader's INSERT is executed (never its TRUNCATE) inside a
@@ -68,20 +70,20 @@ sql.write_text(
  +"""DO $assert$
  DECLARE bad int;
  BEGIN
- IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9105)<>8
+ IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9106)<>10
  THEN RAISE EXCEPTION 'real loader inserted wrong number of edges'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9105 AND osm_source_maxspeed_raw='sign')<>2
  THEN RAISE EXCEPTION 'raw speed tags lost in real insert'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9104 AND lsv_status='restricted')<>2
  THEN RAISE EXCEPTION 'access restriction lost in real insert'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9105
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9106
    AND (x1_m IS NULL OR y1_m IS NULL OR x2_m IS NULL OR y2_m IS NULL))
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9105
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
- IF (SELECT count(*) FROM public.road_nodes WHERE osm_node_id BETWEEN 101 AND 502 AND lsv_component IS NOT NULL)=0
+ IF (SELECT count(*) FROM public.road_nodes WHERE osm_node_id BETWEEN 101 AND 602 AND lsv_component IS NOT NULL)=0
  THEN RAISE EXCEPTION 'components not assigned'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.lsv_component_stats WHERE is_primary)
  THEN RAISE EXCEPTION 'component stats primary missing'; END IF;
