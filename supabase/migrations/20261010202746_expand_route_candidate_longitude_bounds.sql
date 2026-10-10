@@ -1,5 +1,3 @@
--- Keep the route candidate graph large enough for realistic detours on longer trips.
--- Applied to project bsnspyjsirfayypcvpmc on 2026-10-10.
 CREATE OR REPLACE FUNCTION public.route_lsv_candidate(
   start_lon double precision,
   start_lat double precision,
@@ -8,15 +6,7 @@ CREATE OR REPLACE FUNCTION public.route_lsv_candidate(
   allow_unknown boolean DEFAULT true,
   snap_max_distance_meters double precision DEFAULT 500
 )
-RETURNS TABLE(
-  path_seq integer,
-  edge_id bigint,
-  edge_name text,
-  edge_status text,
-  maxspeed_mph numeric,
-  length_m double precision,
-  geom_geojson jsonb
-)
+RETURNS TABLE(path_seq integer, edge_id bigint, edge_name text, edge_status text, maxspeed_mph numeric, length_m double precision, geom_geojson jsonb)
 LANGUAGE plpgsql
 STABLE
 SET statement_timeout TO '10000ms'
@@ -29,6 +19,7 @@ DECLARE
   buffer_lon double precision;
   buffer_lat double precision;
 BEGIN
+  -- Expand the graph window with route length to allow realistic detours.
   buffer_lat := greatest(0.015, abs(end_lat - start_lat) * 0.5);
   buffer_lon := greatest(
     0.015 / greatest(0.25, cos(radians((start_lat + end_lat) / 2))),
