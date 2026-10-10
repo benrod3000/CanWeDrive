@@ -8,6 +8,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/ci-isolated-replay.sh'
+      - 'scripts/ci-importer-sample.py'
       - '.github/workflows/isolated-migration-replay.yml'
 
 permissions:
@@ -74,6 +75,9 @@ jobs:
       - name: Verify migration history and API-role routing smoke
         shell: bash
         run: bash scripts/ci-isolated-replay.sh
+      - name: Importer sample (five cases, temp tables, no production loader)
+        shell: bash
+        run: python3 scripts/ci-importer-sample.py
       - name: Upload replay evidence (including failures)
         if: always()
         uses: actions/upload-artifact@v4
