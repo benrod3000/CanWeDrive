@@ -119,3 +119,49 @@ A clean migration replay creates schema and functions, **not the imported road g
 For a production-vs-replay behavior comparison, select a known-good real route's start/end coordinates and invoke the same `public.route_lsv_candidate` function with matching parameters in each environment **only after** seeding equivalent road nodes/edges. Compare ordered edge geometry, statuses, speed fields, and total length rather than database-generated edge IDs. Use a read-only transaction for the production invocation and do not change production road data. Verify that restricted/ineligible roads are excluded and unknown-speed handling respects `allow_unknown`.
 
 Keep this PR in draft until a full replay, schema/permission parity checks, and routing behavior checks are completed.
+
+
+## Default privileges, constraints, triggers, and security advisors
+
+Default privileges apply to **future** objects and may be provisioned by the Supabase platform rather than this repository. Compare them explicitly between the production project and isolated environment, including object creator and target schema.
+
+```sql
+-- Default ACLs, including role/schema scope and grantee privilege expansion.
+select owner.rolname as owner_role,
+       coalesce(n.nspname, '<all schemas>') as schema,
+       d.defaclobjtype as object_type,
+       d.defaclacl::text as acl,
+       pg_get_userbyid(d.defaclrole) as owner_check
+from pg_default_acl d
+join pg_roles owner on owner.oid=d.defaclrole
+left join pg_namespace n on n.oid=d.defaclnamespace
+order by owner.rolname, schema, d.defaclobjtype, d.defaclacl::text;
+
+-- Constraints include CHECK, foreign keys, unique and primary keys.
+select n.nspname as schema, t.relname as table_name,
+       c.conname, c.contype, c.convalidated,
+       pg_get_constraintdef(c.oid, true) as definition
+from pg_constraint c
+join pg_class t on t.oid=c.conrelid
+join pg_namespace n on n.oid=t.relnamespace
+where n.nspname='public'
+order by t.relname,c.conname;
+
+-- Non-internal triggers, their enabled status, and definitions.
+select n.nspname as schema, c.relname as table_name,
+       t.tgname, t.tgenabled, pg_get_triggerdef(t.oid, true) as definition
+from pg_trigger t
+join pg_class c on c.oid=t.tgrelid
+join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and not t.tgisinternal
+order by c.relname,t.tgname;
+```
+
+Run Supabase **security advisors** on production and on the isolated replay project after migration replay. Compare each finding's lint name, affected object, severity and explanation; platform-managed differences should be documented rather than silently ignored. Security advisor findings are not equivalent to exploitable vulnerabilities, but new exposed tables/functions or missing RLS require investigation.
+
+At the time of the production check, the advisor returned:
+
+- **INFO** `rls_enabled_no_policy`: `public.lsv_component_stats` has RLS enabled with no policies. This is an intentional deny-by-default posture; ensure privileges remain restricted. [Advisor guidance](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+- **WARN** `function_search_path_mutable`: seven functions (`_pgr_get_statement`, `_pgr_dijkstra`, `lsv_pgr_astar`, `lsv_pgr_bdastar`, `lsv_pgr_dijkstra`, `route_lsv_candidate`, `route_lsv_candidate_with_source`). Some are intentionally dependent on inherited pgRouting search paths. Do not change them just to silence the advisor without regression testing. [Advisor guidance](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable)
+
+The security advisor was run against production only. An isolated replay environment has **not** been created or scanned yet.
