@@ -47,7 +47,13 @@ create temp table stage_edges (
   motorroad text,
   lsv_status text not null,
   lsv_reason text,
-  speed_source text
+  speed_source text,
+  osm_maxspeed_raw text,
+  osm_maxspeed_forward_raw text,
+  osm_maxspeed_backward_raw text,
+  osm_source_maxspeed_raw text,
+  osm_maxspeed_type_raw text,
+  osm_maxspeed_source_raw text
 ) on commit drop;
 
 \copy stage_nodes from 'data/road-import/nodes.csv' with (format csv, header true)
@@ -92,6 +98,12 @@ insert into public.road_edges (
   lsv_status,
   lsv_reason,
   speed_source,
+  osm_maxspeed_raw,
+  osm_maxspeed_forward_raw,
+  osm_maxspeed_backward_raw,
+  osm_source_maxspeed_raw,
+  osm_maxspeed_type_raw,
+  osm_maxspeed_source_raw,
   import_run_id
 )
 select
@@ -118,6 +130,12 @@ select
   s.lsv_status,
   s.lsv_reason,
   s.speed_source,
+  s.osm_maxspeed_raw,
+  s.osm_maxspeed_forward_raw,
+  s.osm_maxspeed_backward_raw,
+  s.osm_source_maxspeed_raw,
+  s.osm_maxspeed_type_raw,
+  s.osm_maxspeed_source_raw,
   :import_run_id
 from stage_edges s
 join public.road_nodes source_node
