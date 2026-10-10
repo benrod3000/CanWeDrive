@@ -6,12 +6,15 @@ root.mkdir(parents=True,exist_ok=True)
 def feature(way,nodes,tags):
     return {"type":"Feature","properties":{"@id":str(way),"@way_nodes":nodes,**tags},
             "geometry":{"type":"LineString","coordinates":[[-117.30+i*.001,33.05+(way-9100)*.001] for i in range(len(nodes))]}}
-# Twelve cases: direction, access, speed provenance, conditional speeds,\n# high-speed blocking, roundabout, excluded highway and multi-segment geometry.
+# Thirteen unique ways: 12 included/excluded behavior cases plus motorroad.
 cases=[
  feature(9101,[101,102],{"highway":"residential","maxspeed":"25 mph","name":"Two way"}),
  feature(9102,[201,202],{"highway":"residential","oneway":"yes","maxspeed":"20 mph"}),
  feature(9103,[301,302],{"highway":"residential","oneway":"-1","maxspeed":"30 mph"}),
  feature(9104,[401,402],{"highway":"service","access":"private","maxspeed":"15 mph"}),
+ feature(9105,[501,502],{"highway":"residential","maxspeed":"25 mph","maxspeed:forward":"30 mph",
+   "maxspeed:backward":"20 mph","source:maxspeed":"sign","maxspeed:type":"US:urban",
+   "maxspeed:source":"survey","name":'A "quoted", road'}),
  feature(9106,[601,602],{"highway":"service","access":"destination","maxspeed":"15 mph"}),
  feature(9107,[701,702],{"highway":"residential","name":"Missing speed"}),
  feature(9108,[801,802],{"highway":"primary","maxspeed":"45 mph"}),
@@ -19,14 +22,7 @@ cases=[
  feature(9110,[1001,1002],{"highway":"residential","junction":"roundabout","maxspeed":"15 mph"}),
  feature(9111,[1101,1102],{"highway":"footway","maxspeed":"5 mph"}),
  feature(9112,[1201,1202,1203],{"highway":"residential","maxspeed":"30","name":"Two segments"}),
- feature(9107,[701,702],{"highway":"residential","name":"Untagged speed"}),
- feature(9108,[801,802],{"highway":"residential","maxspeed":"45 mph"}),
- feature(9109,[901,902],{"highway":"residential","maxspeed":"25 mph","maxspeed:conditional":"15 mph @ (Mo-Fr 08:00-09:00)"}),
- feature(9110,[1001,1002],{"highway":"residential","junction":"roundabout","maxspeed":"15 mph"}),
- feature(9111,[1101,1102],{"highway":"residential","motorroad":"yes","maxspeed":"25 mph"}),
- feature(9105,[501,502],{"highway":"residential","maxspeed":"25 mph","maxspeed:forward":"30 mph",
-   "maxspeed:backward":"20 mph","source:maxspeed":"sign","maxspeed:type":"US:urban",
-   "maxspeed:source":"survey","name":'A "quoted", road'}),
+ feature(9113,[1301,1302],{"highway":"residential","motorroad":"yes","maxspeed":"25 mph"}),
 ]
 src=root/"sample.geojsonseq"
 src.write_text("".join(json.dumps(x)+"\n" for x in cases))
@@ -34,7 +30,7 @@ subprocess.run(["node","scripts/build-road-import.mjs",str(src),str(root)],check
 def rows(p):
     with open(p,newline="") as f: return list(csv.DictReader(f))
 edges=rows(root/"edges.csv"); nodes=rows(root/"nodes.csv")
-by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9113)}
+by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9114)}
 def check(label,ok):
     print(("PASS " if ok else "FAIL ")+label,flush=True)
     if not ok: raise AssertionError(label)
@@ -43,11 +39,13 @@ check("case 2 forward one-way",len(by[9102])==1 and by[9102][0]["direction"]=="f
 check("case 3 reverse one-way",len(by[9103])==1 and by[9103][0]["direction"]=="backward" and by[9103][0]["source_osm_node_id"]=="302")
 check("case 4 access=private verified_blocked",len(by[9104])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9104]))
 check("case 6 access=destination restricted",len(by[9106])==2 and all(e["lsv_status"]=="restricted" for e in by[9106]))
-check("case 7 missing speed is unknown",len(by[9107])==2 and all(e["lsv_status"]=="unknown" and not e["maxspeed_mph"] for e in by[9107]))
-check("case 8 over-35 mph blocked",len(by[9108])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9108]))
-check("case 9 conditional speed unknown, raw condition retained",len(by[9109])==2 and all(e["lsv_status"]=="unknown" and e["maxspeed_conditional"]=="15 mph @ (Mo-Fr 08:00-09:00)" for e in by[9109]))
-check("case 10 roundabout implies forward only",len(by[9110])==1 and by[9110][0]["direction"]=="forward")
-check("case 11 motorroad=yes hard blocked",len(by[9111])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9111]))
+check("case 7 missing speed unknown",len(by[9107])==2 and all(e["lsv_status"]=="unknown" and e["maxspeed_mph"]=="" for e in by[9107]))
+check("case 8 over-35 blocked",len(by[9108])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9108]))
+check("case 9 conditional speed unknown",len(by[9109])==2 and all(e["lsv_status"]=="unknown" and e["maxspeed_conditional"]=="15 mph @ (Mo-Fr 07:00-09:00)" for e in by[9109]))
+check("case 10 roundabout one-way",len(by[9110])==1 and by[9110][0]["direction"]=="forward")
+check("case 11 excluded footway",len(by[9111])==0)
+check("case 12 multi-segment and km/h",len(by[9112])==4 and sorted({e["osm_segment_index"] for e in by[9112]})==["0","1"] and all(abs(float(e["maxspeed_mph"])-30/1.609344)<0.01 for e in by[9112]))
+check("case 13 motorroad hard blocked",len(by[9113])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9113]))
 expected_raw={"osm_maxspeed_raw":"25 mph","osm_maxspeed_forward_raw":"30 mph",
  "osm_maxspeed_backward_raw":"20 mph","osm_source_maxspeed_raw":"sign",
  "osm_maxspeed_type_raw":"US:urban","osm_maxspeed_source_raw":"survey"}
@@ -55,13 +53,7 @@ check("case 5 raw speed tags and directional speeds",
  len(by[9105])==2 and all(all(e[k]==v for k,v in expected_raw.items()) for e in by[9105])
  and [round(float(e["maxspeed_mph"])) for e in by[9105]]==[30,20]
  and all(e["speed_source"]=="sign" for e in by[9105]))
-check("case 7 missing speed unknown",len(by[9107])==2 and all(e["lsv_status"]=="unknown" and e["maxspeed_mph"]=="" for e in by[9107]))
-check("case 8 over-35 blocked",len(by[9108])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9108]))
-check("case 9 conditional speed unknown",len(by[9109])==2 and all(e["lsv_status"]=="unknown" and e["maxspeed_conditional"]=="15 mph @ (Mo-Fr 07:00-09:00)" for e in by[9109]))
-check("case 10 roundabout one-way",len(by[9110])==1 and by[9110][0]["direction"]=="forward")
-check("case 11 excluded footway",len(by[9111])==0)
-check("case 12 multi-segment and km/h",len(by[9112])==4 and sorted({e["osm_segment_index"] for e in by[9112]})==["0","1"] and all(abs(float(e["maxspeed_mph"])-30/1.609344)<0.01 for e in by[9112]))
-check("CSV quoting, node references and totals",len(edges)==21 and len(nodes)==23
+check("CSV quoting, node references and totals",len(edges)==23 and len(nodes)==25
  and all(e["source_osm_node_id"] in {n["osm_node_id"] for n in nodes} and e["target_osm_node_id"] in {n["osm_node_id"] for n in nodes} for e in edges)
  and any(e["name"]=='A "quoted", road' for e in edges))
 # The real loader's INSERT is executed (never its TRUNCATE) inside a
@@ -92,7 +84,7 @@ sql.write_text(
  +"""DO $assert$
  DECLARE bad int;
  BEGIN
- IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9112)<>21
+ IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113)<>23
  THEN RAISE EXCEPTION 'real loader inserted wrong number of edges'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9105 AND osm_source_maxspeed_raw='sign')<>2
  THEN RAISE EXCEPTION 'raw speed tags lost in real insert'; END IF;
@@ -100,19 +92,19 @@ sql.write_text(
  THEN RAISE EXCEPTION 'private hard-block status lost in real insert'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9106 AND lsv_status='restricted')<>2
  THEN RAISE EXCEPTION 'destination restriction lost in real insert'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9112
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113
    AND (x1_m IS NULL OR y1_m IS NULL OR x2_m IS NULL OR y2_m IS NULL))
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9111
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203) AND n.lsv_component IS NULL)
  THEN RAISE EXCEPTION 'eligible nodes missing components'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602,801,802) AND n.lsv_component IS NOT NULL)
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602,801,802,1301,1302) AND n.lsv_component IS NOT NULL)
  THEN RAISE EXCEPTION 'blocked/restricted-only nodes assigned components'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges e JOIN public.road_nodes n ON n.id=e.source_node_id
- WHERE e.osm_way_id BETWEEN 9101 AND 9106 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
+ WHERE e.osm_way_id BETWEEN 9101 AND 9113 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
  THEN RAISE EXCEPTION 'edge component differs from source node'; END IF;
  IF (SELECT count(*) FROM public.lsv_component_stats WHERE is_primary)<>1
  THEN RAISE EXCEPTION 'exactly one primary component required'; END IF;
@@ -131,5 +123,5 @@ with open(root/"staging-output.txt","w") as out:
 if result.returncode:
     print((root/"staging-output.txt").read_text()[-5000:])
 check("real loader insert and post-import inside rolled-back CI transaction",result.returncode==0)
-(root/"results.json").write_text(json.dumps({"cases":12,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
+(root/"results.json").write_text(json.dumps({"cases":13,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
 print("IMPORTER SAMPLE TEST PASS",flush=True)
