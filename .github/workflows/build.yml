@@ -24,5 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Check data pipeline scripts
+        run: |
+          node --check scripts/build-road-import.mjs
+          node --check scripts/audit-overture.cjs
+
       - name: Build
         run: npm run build
