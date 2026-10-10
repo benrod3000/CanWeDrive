@@ -1,0 +1,3003 @@
+{
+  "11": [
+    {
+      "rolname": "anon",
+      "rolconfig": [
+        "statement_timeout=3s"
+      ]
+    },
+    {
+      "rolname": "authenticated",
+      "rolconfig": [
+        "statement_timeout=8s"
+      ]
+    },
+    {
+      "rolname": "postgres",
+      "rolconfig": [
+        "search_path=\"\\$user\", public, extensions"
+      ]
+    },
+    {
+      "rolname": "service_role",
+      "rolconfig": null
+    }
+  ],
+  "12": [
+    {
+      "owner_role": "postgres",
+      "schema": "public",
+      "object_type": "S",
+      "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "postgres",
+      "schema": "public",
+      "object_type": "f",
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "postgres",
+      "schema": "public",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "postgres",
+      "schema": "storage",
+      "object_type": "S",
+      "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "postgres",
+      "schema": "storage",
+      "object_type": "f",
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "postgres",
+      "schema": "storage",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "owner_check": "postgres"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "S",
+      "acl": "{postgres=r*w*U*/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "f",
+      "acl": "{postgres=X*/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "acl": "{postgres=a*r*w*d*D*x*t*m*/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql_public",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql_public",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "graphql_public",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "public",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "public",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "realtime",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_admin,dashboard_user=rwU/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "realtime",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_admin,dashboard_user=X/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_admin",
+      "schema": "realtime",
+      "object_type": "r",
+      "acl": "{postgres=a*r*wdDxtm/supabase_admin,dashboard_user=arwdDxtm/supabase_admin}",
+      "owner_check": "supabase_admin"
+    },
+    {
+      "owner_role": "supabase_auth_admin",
+      "schema": "auth",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_auth_admin,dashboard_user=rwU/supabase_auth_admin}",
+      "owner_check": "supabase_auth_admin"
+    },
+    {
+      "owner_role": "supabase_auth_admin",
+      "schema": "auth",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+      "owner_check": "supabase_auth_admin"
+    },
+    {
+      "owner_role": "supabase_auth_admin",
+      "schema": "auth",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin}",
+      "owner_check": "supabase_auth_admin"
+    }
+  ],
+  "13": [
+    {
+      "schema": "public",
+      "table_name": "import_runs",
+      "conname": "import_runs_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "import_runs",
+      "conname": "import_runs_status_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (status = ANY (ARRAY['running'::text, 'completed'::text, 'failed'::text]))"
+    },
+    {
+      "schema": "public",
+      "table_name": "lsv_component_stats",
+      "conname": "lsv_component_stats_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (component)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_direction_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (direction = ANY (ARRAY['forward'::text, 'backward'::text]))"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_import_run_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (import_run_id) REFERENCES import_runs(id) ON DELETE SET NULL"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_length_m_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (length_m >= 0::double precision)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_lsv_status_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (lsv_status = ANY (ARRAY['verified_eligible'::text, 'restricted'::text, 'unknown'::text, 'verified_blocked'::text]))"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_osm_way_id_osm_segment_index_direction_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (osm_way_id, osm_segment_index, direction)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_source_node_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (source_node_id) REFERENCES road_nodes(id) ON DELETE CASCADE"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_edges",
+      "conname": "road_edges_target_node_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (target_node_id) REFERENCES road_nodes(id) ON DELETE CASCADE"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_nodes",
+      "conname": "road_nodes_osm_node_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (osm_node_id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_nodes",
+      "conname": "road_nodes_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_segments",
+      "conname": "road_segments_lsv_status_check",
+      "contype": "c",
+      "convalidated": true,
+      "definition": "CHECK (lsv_status = ANY (ARRAY['verified_eligible'::text, 'restricted'::text, 'unknown'::text, 'verified_blocked'::text]))"
+    },
+    {
+      "schema": "public",
+      "table_name": "road_segments",
+      "conname": "road_segments_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "speed_verifications",
+      "conname": "speed_verifications_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "speed_verifications",
+      "conname": "speed_verifications_road_segment_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (road_segment_id) REFERENCES road_segments(id) ON DELETE CASCADE"
+    },
+    {
+      "schema": "public",
+      "table_name": "turn_restrictions",
+      "conname": "turn_restrictions_import_run_id_fkey",
+      "contype": "f",
+      "convalidated": true,
+      "definition": "FOREIGN KEY (import_run_id) REFERENCES import_runs(id) ON DELETE SET NULL"
+    },
+    {
+      "schema": "public",
+      "table_name": "turn_restrictions",
+      "conname": "turn_restrictions_osm_relation_id_key",
+      "contype": "u",
+      "convalidated": true,
+      "definition": "UNIQUE (osm_relation_id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "turn_restrictions",
+      "conname": "turn_restrictions_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "schema": "public",
+      "table_name": "vehicle_profiles",
+      "conname": "vehicle_profiles_pkey",
+      "contype": "p",
+      "convalidated": true,
+      "definition": "PRIMARY KEY (id)"
+    }
+  ],
+  "14": [],
+  "01": [
+    {
+      "schema": "public",
+      "proname": "_pgr_dijkstra",
+      "args": "edges_sql text, start_vids anyarray, end_vids anyarray, directed boolean, only_cost boolean, normal boolean, n_goals bigint, global boolean",
+      "proconfig": null,
+      "definition_md5": "d2e3be69befb2e7c03372f924e32f55e"
+    },
+    {
+      "schema": "public",
+      "proname": "_pgr_get_statement",
+      "args": "o_sql text",
+      "proconfig": null,
+      "definition_md5": "bc892e85caa1865221ec642c47167681"
+    },
+    {
+      "schema": "public",
+      "proname": "lsv_pgr_astar",
+      "args": "graph_sql text, start_node bigint, end_node bigint",
+      "proconfig": null,
+      "definition_md5": "a2e1bfdc78c75b36fddd9d3f693534d0"
+    },
+    {
+      "schema": "public",
+      "proname": "lsv_pgr_bdastar",
+      "args": "graph_sql text, start_node bigint, end_node bigint",
+      "proconfig": null,
+      "definition_md5": "e44902d5165b98227b0678b098ea4f71"
+    },
+    {
+      "schema": "public",
+      "proname": "lsv_pgr_dijkstra",
+      "args": "graph_sql text, start_node bigint, end_node bigint",
+      "proconfig": null,
+      "definition_md5": "e367e86c06e34374633a029c07a32b0c"
+    },
+    {
+      "schema": "public",
+      "proname": "road_segments_near_route",
+      "args": "route_geojson jsonb, max_distance_meters double precision",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "definition_md5": "4c3bc6eb25bdb4b37d32841745f19d5b"
+    },
+    {
+      "schema": "public",
+      "proname": "route_lsv_candidate",
+      "args": "start_lon double precision, start_lat double precision, end_lon double precision, end_lat double precision, allow_unknown boolean, snap_max_distance_meters double precision",
+      "proconfig": [
+        "statement_timeout=10000ms"
+      ],
+      "definition_md5": "f61f1800f6e05dd3f9e877c43e7450e9"
+    },
+    {
+      "schema": "public",
+      "proname": "route_lsv_candidate_with_source",
+      "args": "start_lon double precision, start_lat double precision, end_lon double precision, end_lat double precision, allow_unknown boolean, snap_max_distance_meters double precision",
+      "proconfig": [
+        "statement_timeout=10000ms"
+      ],
+      "definition_md5": "ec9724ec3b7445f92986ea53921b7345"
+    }
+  ],
+  "02": [
+    {
+      "extname": "pg_stat_statements",
+      "schema": "extensions",
+      "extversion": "1.11"
+    },
+    {
+      "extname": "pgcrypto",
+      "schema": "extensions",
+      "extversion": "1.3"
+    },
+    {
+      "extname": "pgrouting",
+      "schema": "extensions",
+      "extversion": "3.4.1"
+    },
+    {
+      "extname": "plpgsql",
+      "schema": "pg_catalog",
+      "extversion": "1.0"
+    },
+    {
+      "extname": "postgis",
+      "schema": "extensions",
+      "extversion": "3.3.7"
+    },
+    {
+      "extname": "supabase_vault",
+      "schema": "vault",
+      "extversion": "0.3.1"
+    },
+    {
+      "extname": "uuid-ossp",
+      "schema": "extensions",
+      "extversion": "1.1"
+    }
+  ],
+  "03": [
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "source_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "source_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "source_version",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "bbox",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "started_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "completed_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'running'::text"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "record_count",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": "0"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "column_name": "component",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "column_name": "node_count",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "column_name": "is_primary",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_way_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_segment_index",
+      "data_type": "integer",
+      "udt_name": "int4",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "direction",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "source_node_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "target_node_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "geom",
+      "data_type": "USER-DEFINED",
+      "udt_name": "geometry",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "length_m",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "ref",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "highway_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "oneway",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "NO",
+      "column_default": "false"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "maxspeed_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "maxspeed_forward_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "maxspeed_backward_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "maxspeed_conditional",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "access",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "vehicle",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "motor_vehicle",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "motorcar",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "motorroad",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "lsv_status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'unknown'::text"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "lsv_reason",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "speed_source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "speed_verified_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "import_run_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "lsv_component",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "x1_m",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "y1_m",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "x2_m",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "y2_m",
+      "data_type": "double precision",
+      "udt_name": "float8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_maxspeed_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_maxspeed_forward_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_maxspeed_backward_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_source_maxspeed_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_maxspeed_type_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "column_name": "osm_maxspeed_source_raw",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "osm_node_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "geom",
+      "data_type": "USER-DEFINED",
+      "udt_name": "geometry",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "column_name": "lsv_component",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "osm_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "highway_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "maxspeed_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "oneway",
+      "data_type": "boolean",
+      "udt_name": "bool",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "access",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "lsv_status",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": "'unknown'::text"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "speed_source",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "speed_verified_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "geom",
+      "data_type": "USER-DEFINED",
+      "udt_name": "geometry",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "road_segment_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "source_name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "source_url",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "posted_speed_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "verified_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "osm_relation_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "restriction_type",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "from_way_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "via_node_osm_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "to_way_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "except_modes",
+      "data_type": "ARRAY",
+      "udt_name": "_text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "import_run_id",
+      "data_type": "bigint",
+      "udt_name": "int8",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "notes",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "udt_name": "timestamptz",
+      "is_nullable": "NO",
+      "column_default": "now()"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "column_name": "id",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "column_name": "name",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "column_name": "max_road_speed_mph",
+      "data_type": "numeric",
+      "udt_name": "numeric",
+      "is_nullable": "NO",
+      "column_default": null
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "column_name": "description",
+      "data_type": "text",
+      "udt_name": "text",
+      "is_nullable": "YES",
+      "column_default": null
+    }
+  ],
+  "04": [
+    {
+      "schemaname": "public",
+      "tablename": "import_runs",
+      "indexname": "import_runs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX import_runs_pkey ON public.import_runs USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "lsv_component_stats",
+      "indexname": "lsv_component_stats_pkey",
+      "indexdef": "CREATE UNIQUE INDEX lsv_component_stats_pkey ON public.lsv_component_stats USING btree (component)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "lsv_component_stats",
+      "indexname": "lsv_component_stats_primary_idx",
+      "indexdef": "CREATE INDEX lsv_component_stats_primary_idx ON public.lsv_component_stats USING btree (is_primary) WHERE is_primary"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_geom_gist",
+      "indexdef": "CREATE INDEX road_edges_geom_gist ON public.road_edges USING gist (geom)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_highway_type_idx",
+      "indexdef": "CREATE INDEX road_edges_highway_type_idx ON public.road_edges USING btree (highway_type)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_import_run_idx",
+      "indexdef": "CREATE INDEX road_edges_import_run_idx ON public.road_edges USING btree (import_run_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_lsv_component_id_idx",
+      "indexdef": "CREATE INDEX road_edges_lsv_component_id_idx ON public.road_edges USING btree (lsv_component, id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_lsv_component_idx",
+      "indexdef": "CREATE INDEX road_edges_lsv_component_idx ON public.road_edges USING btree (lsv_component)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_lsv_status_idx",
+      "indexdef": "CREATE INDEX road_edges_lsv_status_idx ON public.road_edges USING btree (lsv_status)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_osm_way_id_osm_segment_index_direction_key",
+      "indexdef": "CREATE UNIQUE INDEX road_edges_osm_way_id_osm_segment_index_direction_key ON public.road_edges USING btree (osm_way_id, osm_segment_index, direction)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_osm_way_idx",
+      "indexdef": "CREATE INDEX road_edges_osm_way_idx ON public.road_edges USING btree (osm_way_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_pkey",
+      "indexdef": "CREATE UNIQUE INDEX road_edges_pkey ON public.road_edges USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_source_node_idx",
+      "indexdef": "CREATE INDEX road_edges_source_node_idx ON public.road_edges USING btree (source_node_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "indexname": "road_edges_target_node_idx",
+      "indexdef": "CREATE INDEX road_edges_target_node_idx ON public.road_edges USING btree (target_node_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_component_id_idx",
+      "indexdef": "CREATE INDEX road_nodes_component_id_idx ON public.road_nodes USING btree (lsv_component, id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_geom_gist",
+      "indexdef": "CREATE INDEX road_nodes_geom_gist ON public.road_nodes USING gist (geom)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_geom_gist_idx",
+      "indexdef": "CREATE INDEX road_nodes_geom_gist_idx ON public.road_nodes USING gist (geom)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_lsv_component_idx",
+      "indexdef": "CREATE INDEX road_nodes_lsv_component_idx ON public.road_nodes USING btree (lsv_component)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_osm_node_id_idx",
+      "indexdef": "CREATE INDEX road_nodes_osm_node_id_idx ON public.road_nodes USING btree (osm_node_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_osm_node_id_key",
+      "indexdef": "CREATE UNIQUE INDEX road_nodes_osm_node_id_key ON public.road_nodes USING btree (osm_node_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "indexname": "road_nodes_pkey",
+      "indexdef": "CREATE UNIQUE INDEX road_nodes_pkey ON public.road_nodes USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_segments",
+      "indexname": "road_segments_geom_idx",
+      "indexdef": "CREATE INDEX road_segments_geom_idx ON public.road_segments USING gist (geom)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_segments",
+      "indexname": "road_segments_osm_id_idx",
+      "indexdef": "CREATE INDEX road_segments_osm_id_idx ON public.road_segments USING btree (osm_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_segments",
+      "indexname": "road_segments_pkey",
+      "indexdef": "CREATE UNIQUE INDEX road_segments_pkey ON public.road_segments USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "speed_verifications",
+      "indexname": "speed_verifications_pkey",
+      "indexdef": "CREATE UNIQUE INDEX speed_verifications_pkey ON public.speed_verifications USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "speed_verifications",
+      "indexname": "speed_verifications_road_segment_id_idx",
+      "indexdef": "CREATE INDEX speed_verifications_road_segment_id_idx ON public.speed_verifications USING btree (road_segment_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "indexname": "turn_restrictions_from_way_idx",
+      "indexdef": "CREATE INDEX turn_restrictions_from_way_idx ON public.turn_restrictions USING btree (from_way_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "indexname": "turn_restrictions_import_run_idx",
+      "indexdef": "CREATE INDEX turn_restrictions_import_run_idx ON public.turn_restrictions USING btree (import_run_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "indexname": "turn_restrictions_osm_relation_id_key",
+      "indexdef": "CREATE UNIQUE INDEX turn_restrictions_osm_relation_id_key ON public.turn_restrictions USING btree (osm_relation_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "indexname": "turn_restrictions_pkey",
+      "indexdef": "CREATE UNIQUE INDEX turn_restrictions_pkey ON public.turn_restrictions USING btree (id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "indexname": "turn_restrictions_to_way_idx",
+      "indexdef": "CREATE INDEX turn_restrictions_to_way_idx ON public.turn_restrictions USING btree (to_way_id)"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "vehicle_profiles",
+      "indexname": "vehicle_profiles_pkey",
+      "indexdef": "CREATE UNIQUE INDEX vehicle_profiles_pkey ON public.vehicle_profiles USING btree (id)"
+    }
+  ],
+  "05": [
+    {
+      "schemaname": "public",
+      "tablename": "import_runs",
+      "policyname": "public can read import runs",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_edges",
+      "policyname": "public can read road edges",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_nodes",
+      "policyname": "public can read road nodes",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "road_segments",
+      "policyname": "public can read road segments",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "speed_verifications",
+      "policyname": "public can read speed verifications",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "turn_restrictions",
+      "policyname": "public can read turn restrictions",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    },
+    {
+      "schemaname": "public",
+      "tablename": "vehicle_profiles",
+      "policyname": "public can read vehicle profiles",
+      "permissive": "PERMISSIVE",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "qual": "true",
+      "with_check": null
+    }
+  ],
+  "06": [
+    {
+      "relname": "import_runs",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "lsv_component_stats",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "road_edges",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "road_nodes",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "road_segments",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "speed_verifications",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "turn_restrictions",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    },
+    {
+      "relname": "vehicle_profiles",
+      "relrowsecurity": true,
+      "relforcerowsecurity": false
+    }
+  ],
+  "07": [
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "import_runs",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "lsv_component_stats",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_edges",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_nodes",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "road_segments",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "speed_verifications",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "turn_restrictions",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "anon",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "authenticated",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "DELETE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "INSERT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "SELECT"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "TRIGGER"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "TRUNCATE"
+    },
+    {
+      "table_schema": "public",
+      "table_name": "vehicle_profiles",
+      "grantee": "service_role",
+      "privilege_type": "UPDATE"
+    }
+  ],
+  "08": [
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_dijkstra",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_dijkstra",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_dijkstra",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_dijkstra",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_dijkstra",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_get_statement",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_get_statement",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_get_statement",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_get_statement",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "_pgr_get_statement",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_astar",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_astar",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_astar",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_astar",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_astar",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_bdastar",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_bdastar",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_bdastar",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_bdastar",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_bdastar",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_dijkstra",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_dijkstra",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_dijkstra",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_dijkstra",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "lsv_pgr_dijkstra",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "road_segments_near_route",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "road_segments_near_route",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "road_segments_near_route",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "road_segments_near_route",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "road_segments_near_route",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate_with_source",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate_with_source",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate_with_source",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate_with_source",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE"
+    },
+    {
+      "routine_schema": "public",
+      "routine_name": "route_lsv_candidate_with_source",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE"
+    }
+  ],
+  "09": [
+    {
+      "table_name": "lsv_component_stats",
+      "column_name": "component",
+      "data_type": "bigint",
+      "udt_name": "int8"
+    },
+    {
+      "table_name": "lsv_component_stats",
+      "column_name": "node_count",
+      "data_type": "bigint",
+      "udt_name": "int8"
+    },
+    {
+      "table_name": "lsv_component_stats",
+      "column_name": "is_primary",
+      "data_type": "boolean",
+      "udt_name": "bool"
+    },
+    {
+      "table_name": "road_edges",
+      "column_name": "lsv_component",
+      "data_type": "bigint",
+      "udt_name": "int8"
+    },
+    {
+      "table_name": "road_nodes",
+      "column_name": "lsv_component",
+      "data_type": "bigint",
+      "udt_name": "int8"
+    }
+  ],
+  "migrations": [
+    {
+      "version": "20260918235827",
+      "name": "enable_spatial_extensions"
+    },
+    {
+      "version": "20260918235854",
+      "name": "create_lsv_network_schema"
+    },
+    {
+      "version": "20260919001717",
+      "name": "add_route_road_lookup"
+    },
+    {
+      "version": "20260919001813",
+      "name": "harden_route_lookup_and_indexes"
+    },
+    {
+      "version": "20260919001944",
+      "name": "move_geo_extensions_to_dedicated_schema"
+    },
+    {
+      "version": "20260919002134",
+      "name": "include_road_geometry_in_route_lookup"
+    },
+    {
+      "version": "20260919011802",
+      "name": "create_road_graph_tables"
+    },
+    {
+      "version": "20260919011842",
+      "name": "index_road_graph_import_runs"
+    },
+    {
+      "version": "20260919012415",
+      "name": "add_lsv_graph_routing_rpc"
+    },
+    {
+      "version": "20260919030102",
+      "name": "fix_lsv_routing_pgrouting_search_path"
+    },
+    {
+      "version": "20260919030202",
+      "name": "correct_lsv_routing_search_path"
+    },
+    {
+      "version": "20260919031231",
+      "name": "snap_lsv_routes_to_usable_nodes"
+    },
+    {
+      "version": "20260919031325",
+      "name": "restore_pgrouting_helper_resolution"
+    },
+    {
+      "version": "20260919031354",
+      "name": "restore_pgrouting_dijkstra_helper_resolution"
+    },
+    {
+      "version": "20260919031447",
+      "name": "inherit_database_search_path_for_lsv_routing"
+    },
+    {
+      "version": "20260919050319",
+      "name": "increase_route_rpc_timeout"
+    },
+    {
+      "version": "20261002223814",
+      "name": "add_lsv_component_ids_and_fix_endpoint_snapping"
+    },
+    {
+      "version": "20261002224055",
+      "name": "optimize_lsv_endpoint_candidate_search"
+    },
+    {
+      "version": "20261002224134",
+      "name": "fix_lsv_router_extension_search_path"
+    },
+    {
+      "version": "20261002224920",
+      "name": "add_public_access_endpoint_snap_candidates"
+    },
+    {
+      "version": "20261002225132",
+      "name": "optimize_lsv_endpoint_candidate_selection"
+    },
+    {
+      "version": "20261002225818",
+      "name": "fix_lsv_router_pg_routing_search_path"
+    },
+    {
+      "version": "20261003004137",
+      "name": "classify_restricted_access_for_lsv"
+    },
+    {
+      "version": "20261003004755",
+      "name": "add_access_entrance_resolver"
+    },
+    {
+      "version": "20261003010217",
+      "name": "add_fast_lsv_endpoint_snap_index"
+    },
+    {
+      "version": "20261003010430",
+      "name": "fix_lsv_endpoint_candidate_limit"
+    },
+    {
+      "version": "20261003010444",
+      "name": "fix_pgrouting_search_path_order"
+    },
+    {
+      "version": "20261003010501",
+      "name": "set_pgrouting_runtime_search_path"
+    },
+    {
+      "version": "20261003034236",
+      "name": "add_lsv_public_network_fallback"
+    },
+    {
+      "version": "20261003034244",
+      "name": "refine_lsv_endpoint_component_fallback"
+    },
+    {
+      "version": "20261003034256",
+      "name": "fix_lsv_routing_pgsearchpath"
+    },
+    {
+      "version": "20261003040059",
+      "name": "add_lsv_component_stats_for_fast_fallback"
+    },
+    {
+      "version": "20261003040114",
+      "name": "fix_pgRouting_internal_search_path"
+    },
+    {
+      "version": "20261003040130",
+      "name": "reset_route_function_search_path"
+    },
+    {
+      "version": "20261003043147",
+      "name": "optimize_lsv_routing_by_component"
+    },
+    {
+      "version": "20261003043338",
+      "name": "fix_pgrouting_search_path_component"
+    },
+    {
+      "version": "20261003043413",
+      "name": "test_sql_pgr_wrapper"
+    },
+    {
+      "version": "20261003043444",
+      "name": "fix_pgrouting_wrapper_and_rpc"
+    },
+    {
+      "version": "20261003043553",
+      "name": "use_astar_for_fast_lsv_routes"
+    },
+    {
+      "version": "20261003043826",
+      "name": "use_bidirectional_astar_for_lsv_routes"
+    },
+    {
+      "version": "20261003043912",
+      "name": "allow_lsv_route_function_more_time"
+    },
+    {
+      "version": "20261003044014",
+      "name": "confine_lsv_graph_to_route_corridor"
+    },
+    {
+      "version": "20261005012713",
+      "name": "lock_down_lsv_component_stats_rls"
+    },
+    {
+      "version": "20261010202536",
+      "name": "fix_route_candidate_bbox_bounds"
+    },
+    {
+      "version": "20261010202701",
+      "name": "scale_route_candidate_search_bounds"
+    },
+    {
+      "version": "20261010202746",
+      "name": "expand_route_candidate_longitude_bounds"
+    },
+    {
+      "version": "20261010204828",
+      "name": "add_route_speed_source_metadata"
+    },
+    {
+      "version": "20261010205155",
+      "name": "preserve_raw_osm_speed_tags"
+    }
+  ]
+}
