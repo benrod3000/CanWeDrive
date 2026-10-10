@@ -167,3 +167,29 @@ At the time of the production check, the advisor returned:
 - **WARN** `function_search_path_mutable`: seven functions (`_pgr_get_statement`, `_pgr_dijkstra`, `lsv_pgr_astar`, `lsv_pgr_bdastar`, `lsv_pgr_dijkstra`, `route_lsv_candidate`, `route_lsv_candidate_with_source`). Some are intentionally dependent on inherited pgRouting search paths. Do not change them just to silence the advisor without regression testing. [Advisor guidance](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable)
 
 The security advisor was run against production only. An isolated replay environment has **not** been created or scanned yet.
+
+
+## Production read-only SQL execution check (2026-10-10)
+
+All **14 individual SQL statements** in the four fenced SQL blocks above were executed successfully against the live project, using read-only queries. This validates the copy-paste syntax and production baseline collection; it **does not** validate clean migration replay.
+
+Observed result counts, in statement order:
+
+| Check | Rows returned |
+| --- | ---: |
+| Routing and pgRouting helper functions | 8 |
+| Extensions | 7 |
+| Public columns | 93 |
+| Public indexes | 32 |
+| Public RLS policies | 7 |
+| Public RLS table flags | 8 |
+| Selected table grants | 154 |
+| Public function grants | 39 |
+| Component-related columns | 5 |
+| Component-stat count query | 1 (value: 993) |
+| Role configurations | 4 |
+| Default ACL entries | 24 |
+| Public constraints | 21 |
+| Non-internal public triggers | 0 |
+
+Production advisor security findings were collected separately as documented above. The isolated replay, its advisor comparison, and its seeded routing behavior checks remain outstanding.
