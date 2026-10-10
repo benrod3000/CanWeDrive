@@ -183,14 +183,26 @@ $smoke$;
 RESET ROLE;
 ROLLBACK;
 SQL
+# Run smoke even when parity failed; capture both API-role results and all errors.
+set +e
 psql -v ON_ERROR_STOP=1 -F $'\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv 2>&1
+smoke_exit=$?
+set -e
 cat replay-results/smoke-output.tsv
-grep -q 'PASS anon true=' replay-results/smoke-output.tsv
-grep -q 'PASS authenticated true=' replay-results/smoke-output.tsv
-echo 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
-
-# A green job requires BOTH routing smoke assertions and strict parity.
-if grep -qv '^All 13 data-independent baseline queries and migration pairs match exactly\.$' replay-results/parity-differences.txt; then
-  echo 'FAIL: production parity differences remain; see parity-differences.txt' >&2
-  exit 1
+if [ "$smoke_exit" -eq 0 ] && grep -q 'PASS anon true=' replay-results/smoke-output.tsv && grep -q 'PASS authenticated true=' replay-results/smoke-output.tsv; then
+  echo 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' | tee replay-results/smoke-review.txt
+else
+  echo "FAIL: role-based smoke test exit=$smoke_exit or missing assertions" | tee replay-results/smoke-review.txt
 fi
+# All stages ran. A green run requires zero hard parity differences and smoke PASS.
+fail=0
+if [ "$(cat replay-results/parity-differences.txt)" != 'NONE' ]; then
+  echo 'FAIL: hard parity/function/history differences (see parity-differences.txt)' >&2
+  fail=1
+fi
+if ! grep -q '^PASS:' replay-results/smoke-review.txt; then
+  echo 'FAIL: smoke assertions' >&2
+  fail=1
+fi
+echo "FINAL REPLAY STATUS: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL)"
+exit "$fail"
