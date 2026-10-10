@@ -274,6 +274,7 @@ export async function GET(request: Request) {
     url.searchParams.set("accept-language", "en-US");
 
     try {
+      await waitForNominatimSlot();
       const response = await fetch(url, {
         headers: {
           "User-Agent": "Can We Cart/0.5 (LSV routing research tool)",
