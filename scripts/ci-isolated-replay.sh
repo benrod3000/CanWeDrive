@@ -86,7 +86,7 @@ print('\n'.join(report))
 (root/'parity-differences.txt').write_text('\n\n'.join(failures) if failures else 'All 13 data-independent baseline queries and migration pairs match exactly.\n')
 if failures:
     print('\n\n'.join(failures),file=sys.stderr)
-    sys.exit(1)
+    print('Parity mismatches recorded; continuing to smoke assertions before failing CI.')
 PY
 
 # Smoke test is isolated and rolled back; never seed the production graph.
@@ -151,3 +151,9 @@ cat replay-results/smoke-output.tsv
 grep -q 'PASS anon true=' replay-results/smoke-output.tsv
 grep -q 'PASS authenticated true=' replay-results/smoke-output.tsv
 echo 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
+
+# A green job requires BOTH routing smoke assertions and strict parity.
+if grep -qv '^All 13 data-independent baseline queries and migration pairs match exactly\.$' replay-results/parity-differences.txt; then
+  echo 'FAIL: production parity differences remain; see parity-differences.txt' >&2
+  exit 1
+fi
