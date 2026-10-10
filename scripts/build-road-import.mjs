@@ -241,6 +241,12 @@ edgesStream.write([
   "lsv_status",
   "lsv_reason",
   "speed_source",
+  "osm_maxspeed_raw",
+  "osm_maxspeed_forward_raw",
+  "osm_maxspeed_backward_raw",
+  "osm_source_maxspeed_raw",
+  "osm_maxspeed_type_raw",
+  "osm_maxspeed_source_raw",
 ].join(",") + "\n");
 
 let wayCount = 0;
@@ -289,18 +295,26 @@ async function processLine(line) {
   }
 
   const tags = properties;
-  const maxspeed = parseSpeedMph(tags.maxspeed);
-  const maxspeedForward = parseSpeedMph(tags["maxspeed:forward"]);
-  const maxspeedBackward = parseSpeedMph(tags["maxspeed:backward"]);
-  const conditionalSpeed = tags["maxspeed:conditional"] ?? null;
-  // source:maxspeed is OSM's documented field for how the speed limit was
-  // determined (e.g. "sign"). maxspeed:type is used in some regions, and
-  // maxspeed:source is a deprecated spelling we can still read safely.
+  const rawSpeedTag = (name) => {
+    const value = normalizeAttribute(tags, name);
+    return value === null || value === undefined ? null : String(value);
+  };
+  const rawMaxspeed = rawSpeedTag("maxspeed");
+  const rawMaxspeedForward = rawSpeedTag("maxspeed:forward");
+  const rawMaxspeedBackward = rawSpeedTag("maxspeed:backward");
+  const rawMaxspeedConditional = rawSpeedTag("maxspeed:conditional");
+  const rawSourceMaxspeed = rawSpeedTag("source:maxspeed");
+  const rawMaxspeedType = rawSpeedTag("maxspeed:type");
+  const rawMaxspeedSource = rawSpeedTag("maxspeed:source");
+  const maxspeed = parseSpeedMph(rawMaxspeed);
+  const maxspeedForward = parseSpeedMph(rawMaxspeedForward);
+  const maxspeedBackward = parseSpeedMph(rawMaxspeedBackward);
+  const conditionalSpeed = rawMaxspeedConditional;
+  // Preserve raw source tags separately from the normalized source label.
+  // source:maxspeed=sign describes OSM tagging provenance; it is not proof
+  // that this app independently verified the sign in the field.
   const speedSource = normalizeSpeedSource(
-    tags["source:maxspeed"] ??
-      tags["maxspeed:type"] ??
-      tags["maxspeed:source"] ??
-      "OpenStreetMap",
+    rawSourceMaxspeed ?? rawMaxspeedType ?? rawMaxspeedSource ?? "OpenStreetMap",
   );
   const direction = getOnewayDirection(tags);
   const oneway =
@@ -349,6 +363,12 @@ async function processLine(line) {
         rule.status,
         rule.reason,
         speedSource,
+        rawMaxspeed,
+        rawMaxspeedForward,
+        rawMaxspeedBackward,
+        rawSourceMaxspeed,
+        rawMaxspeedType,
+        rawMaxspeedSource,
       ]));
       segmentCount += 1;
     }
@@ -379,6 +399,12 @@ async function processLine(line) {
         rule.status,
         rule.reason,
         speedSource,
+        rawMaxspeed,
+        rawMaxspeedForward,
+        rawMaxspeedBackward,
+        rawSourceMaxspeed,
+        rawMaxspeedType,
+        rawMaxspeedSource,
       ]));
       segmentCount += 1;
     }
