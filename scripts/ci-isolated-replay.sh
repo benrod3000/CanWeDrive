@@ -107,7 +107,6 @@ FROM (VALUES
 ) AS e(i,from_osm,to_osm,cost,status,speed)
 JOIN public.road_nodes s ON s.osm_node_id=e.from_osm
 JOIN public.road_nodes t ON t.osm_node_id=e.to_osm;
--- Assert the same routing behavior as each real API role. Any mismatch raises SQLSTATE P0001.
 SET LOCAL ROLE anon;
 DO $smoke$
 DECLARE statuses text[]; restricted_count integer; blocked_count integer;
@@ -144,136 +143,8 @@ $smoke$;
 RESET ROLE;
 ROLLBACK;
 SQL
-psql -v ON_ERROR_STOP=1 -F 
+psql -v ON_ERROR_STOP=1 -F $'\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv 2>&1
 cat replay-results/smoke-output.tsv
-grep -q 'PASS anon true=' replay-results/smoke-output.tsv\ngrep -q 'PASS authenticated true=' replay-results/smoke-output.tsv\necho 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
-\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv 2>&1
-cat replay-results/smoke-output.tsv
-echo 'Smoke executed; review outputs for restricted-road exclusion and unknown-speed behavior.' > replay-results/smoke-review.txt# Strict parity: 13 production snapshots; query 10 is data-dependent and excluded.
-python3 - <<'PY'
-import json,pathlib
-out={}
-for name in ('scripts/replay-production-baseline-01-07.json','scripts/replay-production-baseline-08-14.json'):
-    out.update(json.loads(pathlib.Path(name).read_text()))
-assert len(out)==13, f'Expected 13 production baselines, got {len(out)}'
-pathlib.Path('replay-results/production-baseline.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n')
-PY
-python3 - <<'PY'
-import json,pathlib,re,subprocess,sys
-baseline=json.loads(pathlib.Path('replay-results/production-baseline.json').read_text())
-report=[]
-diffs=[]
-def canon(row):
-    return json.dumps(row,sort_keys=True,separators=(',',':'),ensure_ascii=False)
-for key,expected in sorted(baseline.items()):
-    query=pathlib.Path(f'replay-results/baselines/{key}.sql').read_text()
-    query=re.sub(r'--[^\n]*','',query).strip().rstrip(';')
-    sql=f"select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from ({query}) t"
-    result=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-At','-c',sql],text=True,capture_output=True)
-    if result.returncode:
-        diffs.append(f'Query {key} FAILED: {result.stderr}')
-        continue
-    actual=json.loads(result.stdout.strip())
-    pathlib.Path(f'replay-results/baselines/{key}.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\n')
-    left=sorted(map(canon,expected)); right=sorted(map(canon,actual))
-    missing=list((__import__('collections').Counter(left)-__import__('collections').Counter(right)).elements())
-    extra=list((__import__('collections').Counter(right)-__import__('collections').Counter(left)).elements())
-    if missing or extra:
-        diffs.append(f'Query {key}: production {len(expected)} rows, replay {len(actual)} rows; missing={len(missing)}, extra={len(extra)}')
-        diffs.extend('  PRODUCTION_ONLY '+x for x in missing)
-        diffs.extend('  REPLAY_ONLY '+x for x in extra)
-    else: report.append(f'Query {key}: PASS ({len(actual)} rows)')
-# Verify function hashes AND proconfig with the same strict baseline comparison.
-functions=baseline['01']
-lines=[]
-for row in sorted(functions,key=lambda x:(x['proname'],x['args'])):
-    lines.append(f"{row['proname']}({row['args']}): expected hash={row['definition_md5']} config={row['proconfig']}")
-pathlib.Path('replay-results/function-comparison.txt').write_text('\n'.join(lines)+'\n')
-print('FUNCTION BASELINE:\n'+'\n'.join(lines))
-print('\n'.join(report))
-pathlib.Path('replay-results/parity-differences.txt').write_text('\n'.join(diffs)+'\n' if diffs else 'NONE\n')
-if diffs:
-    print('PARITY FAILED:\n'+'\n'.join(diffs))
-    sys.exit(1)
-print('PARITY PASS: all 13 normalized snapshots match, including 8 function hashes and proconfig')
-PY
-
-# Verify replayed migration history exactly matches recorded production versions/names.
-python3 - <<'PY'
-import pathlib,re,subprocess,sys
-expected=[(p.name[:14],p.name[15:-4]) for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
-actual=subprocess.check_output(['psql','-v','ON_ERROR_STOP=1','-F','|','-At','-c','select version,name from supabase_migrations.schema_migrations order by version'],text=True)
-rows=[tuple(line.split('|',1)) for line in actual.splitlines() if line]
-pathlib.Path('replay-results/migration-pairs.txt').write_text(actual)
-if len(expected)!=48 or rows!=expected:
-    print('MIGRATION VERSION/NAME MISMATCH',file=sys.stderr)
-    print('expected:',expected,file=sys.stderr)
-    print('actual:',rows,file=sys.stderr)
-    sys.exit(1)
-print('Migration version/name pairs PASS: 48/48')
-PY
-
-# Smoke test is isolated and rolled back; never seed the production graph.
-cat > replay-results/smoke.sql <<'SQL'
-BEGIN;
-INSERT INTO public.road_nodes(osm_node_id,geom,lsv_component)
-VALUES
-(-900001,extensions.st_setsrid(extensions.st_point(-117.3000,33.0500),4326),900001),
-(-900002,extensions.st_setsrid(extensions.st_point(-117.2990,33.0500),4326),900001),
-(-900003,extensions.st_setsrid(extensions.st_point(-117.2980,33.0500),4326),900001),
-(-900004,extensions.st_setsrid(extensions.st_point(-117.2990,33.0510),4326),900001);
-INSERT INTO public.road_edges(osm_way_id,osm_segment_index,direction,source_node_id,target_node_id,geom,length_m,highway_type,lsv_status,maxspeed_mph,lsv_component,x1_m,y1_m,x2_m,y2_m)
-SELECT -900000-e.i,0,'forward',s.id,t.id,
- extensions.st_makeline(s.geom,t.geom),e.cost,'residential',e.status,e.speed,900001,
- extensions.st_x(s.geom),extensions.st_y(s.geom),extensions.st_x(t.geom),extensions.st_y(t.geom)
-FROM (VALUES
- (1,-900001,-900002,100.0,'verified_eligible'::text,25::numeric),
- (2,-900002,-900003,100.0,'unknown'::text,NULL::numeric),
- (3,-900001,-900004,50.0,'restricted'::text,25::numeric),
- (4,-900004,-900003,50.0,'verified_eligible'::text,25::numeric)
-) AS e(i,from_osm,to_osm,cost,status,speed)
-JOIN public.road_nodes s ON s.osm_node_id=e.from_osm
-JOIN public.road_nodes t ON t.osm_node_id=e.to_osm;
--- Assert the same routing behavior as each real API role. Any mismatch raises SQLSTATE P0001.
-SET LOCAL ROLE anon;
-DO $smoke$
-DECLARE statuses text[]; restricted_count integer; blocked_count integer;
-BEGIN
-  SELECT array_agg(edge_status ORDER BY path_seq),
-         count(*) FILTER (WHERE edge_status IN ('restricted','verified_blocked'))
-    INTO statuses,restricted_count
-  FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,true,100);
-  IF statuses IS DISTINCT FROM ARRAY['verified_eligible','unknown']::text[] OR restricted_count <> 0 THEN
-    RAISE EXCEPTION 'anon allow_unknown=true: expected [verified_eligible,unknown], got %, restricted count %',statuses,restricted_count;
-  END IF;
-  SELECT count(*) INTO blocked_count FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,false,100);
-  IF blocked_count <> 0 THEN RAISE EXCEPTION 'anon allow_unknown=false: expected 0 rows, got %',blocked_count; END IF;
-  RAISE NOTICE 'PASS anon true=[verified_eligible,unknown] false=0 restricted=0';
-END
-$smoke$;
-RESET ROLE;
-SET LOCAL ROLE authenticated;
-DO $smoke$
-DECLARE statuses text[]; restricted_count integer; blocked_count integer;
-BEGIN
-  SELECT array_agg(edge_status ORDER BY path_seq),
-         count(*) FILTER (WHERE edge_status IN ('restricted','verified_blocked'))
-    INTO statuses,restricted_count
-  FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,true,100);
-  IF statuses IS DISTINCT FROM ARRAY['verified_eligible','unknown']::text[] OR restricted_count <> 0 THEN
-    RAISE EXCEPTION 'authenticated allow_unknown=true: expected [verified_eligible,unknown], got %, restricted count %',statuses,restricted_count;
-  END IF;
-  SELECT count(*) INTO blocked_count FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,false,100);
-  IF blocked_count <> 0 THEN RAISE EXCEPTION 'authenticated allow_unknown=false: expected 0 rows, got %',blocked_count; END IF;
-  RAISE NOTICE 'PASS authenticated true=[verified_eligible,unknown] false=0 restricted=0';
-END
-$smoke$;
-RESET ROLE;
-ROLLBACK;
-SQL
-psql -v ON_ERROR_STOP=1 -F 
-cat replay-results/smoke-output.tsv
-grep -q 'PASS anon true=' replay-results/smoke-output.tsv\ngrep -q 'PASS authenticated true=' replay-results/smoke-output.tsv\necho 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
-\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv 2>&1
-cat replay-results/smoke-output.tsv
-echo 'Smoke executed; review outputs for restricted-road exclusion and unknown-speed behavior.' > replay-results/smoke-review.txt
+grep -q 'PASS anon true=' replay-results/smoke-output.tsv
+grep -q 'PASS authenticated true=' replay-results/smoke-output.tsv
+echo 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
