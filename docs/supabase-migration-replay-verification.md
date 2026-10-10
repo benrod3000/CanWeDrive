@@ -19,7 +19,7 @@ select
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
-  and (p.proname like '%lsv%' or p.proname like '%route%' or p.proname like '\\_pgr%' escape '\\')
+  and (p.proname like '%lsv%' or p.proname like '%route%' or left(p.proname, 5) = '_pgr_')
 order by 1, 2, 3;
 ```
 
