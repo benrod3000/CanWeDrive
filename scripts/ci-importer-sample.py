@@ -83,10 +83,18 @@ sql.write_text(
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
- IF (SELECT count(*) FROM public.road_nodes WHERE osm_node_id BETWEEN 101 AND 602 AND lsv_component IS NOT NULL)=0
- THEN RAISE EXCEPTION 'components not assigned'; END IF;
- IF NOT EXISTS (SELECT 1 FROM public.lsv_component_stats WHERE is_primary)
- THEN RAISE EXCEPTION 'component stats primary missing'; END IF;
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502) AND n.lsv_component IS NULL)
+ THEN RAISE EXCEPTION 'eligible nodes missing components'; END IF;
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602) AND n.lsv_component IS NOT NULL)
+ THEN RAISE EXCEPTION 'blocked/restricted-only nodes assigned components'; END IF;
+ IF EXISTS (SELECT 1 FROM public.road_edges e JOIN public.road_nodes n ON n.id=e.source_node_id
+ WHERE e.osm_way_id BETWEEN 9101 AND 9106 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
+ THEN RAISE EXCEPTION 'edge component differs from source node'; END IF;
+ IF (SELECT count(*) FROM public.lsv_component_stats WHERE is_primary)<>1
+ THEN RAISE EXCEPTION 'exactly one primary component required'; END IF;
+ IF (SELECT coalesce(sum(node_count),0) FROM public.lsv_component_stats) <>
+    (SELECT count(*) FROM public.road_nodes WHERE lsv_component IS NOT NULL)
+ THEN RAISE EXCEPTION 'component stats total does not equal assigned nodes'; END IF;
  IF EXISTS (SELECT 1 FROM public.lsv_component_stats s
  WHERE node_count <> (SELECT count(*) FROM public.road_nodes n WHERE n.lsv_component=s.component))
  THEN RAISE EXCEPTION 'component stats counts incorrect'; END IF;
