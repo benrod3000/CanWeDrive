@@ -7,6 +7,9 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/**'
+      - 'scripts/ci-isolated-replay.sh'
+      - 'scripts/replay-production-baseline-*.json'
+      - 'scripts/replay-platform-allowlist.json'
       - '.github/workflows/isolated-migration-replay.yml'
 
 permissions:
