@@ -19,14 +19,16 @@ select
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
-  and (p.proname like '%lsv%' or p.proname like '%route%')
+  and (p.proname like '%lsv%' or p.proname like '%route%' or p.proname like '\\_pgr%' escape '\\')
 order by 1, 2, 3;
 ```
 
-## Production function baseline
+## Production function baseline (including pgRouting helper wrappers)
 
 | Function | proconfig | definition_md5 |
 | --- | --- | --- |
+| `public._pgr_dijkstra(text, anyarray, anyarray, boolean, boolean, boolean, bigint, boolean)` | NULL | `d2e3be69befb2e7c03372f924e32f55e` |
+| `public._pgr_get_statement(text)` | NULL | `bc892e85caa1865221ec642c47167681` |
 | `public.lsv_pgr_astar(text, bigint, bigint)` | NULL | `a2e1bfdc78c75b36fddd9d3f693534d0` |
 | `public.lsv_pgr_bdastar(text, bigint, bigint)` | NULL | `e44902d5165b98227b0678b098ea4f71` |
 | `public.lsv_pgr_dijkstra(text, bigint, bigint)` | NULL | `e367e86c06e34374633a029c07a32b0c` |
