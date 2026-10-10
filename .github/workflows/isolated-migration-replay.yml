@@ -76,7 +76,7 @@ jobs:
       - name: Verify migration history and API-role routing smoke
         shell: bash
         run: bash scripts/ci-isolated-replay.sh
-      - name: Importer sample (isolated real INSERT and post-import assertions)
+      - name: Importer sample (six cases, real INSERT and post-import assertions)
         shell: bash
         run: python3 scripts/ci-importer-sample.py
       - name: Upload replay evidence (including failures)
