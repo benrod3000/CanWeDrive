@@ -40,7 +40,9 @@ done
 python3 - <<'PY'
 import json,pathlib,re,subprocess,sys,difflib
 root=pathlib.Path('replay-results')
-baseline=json.loads(pathlib.Path('scripts/replay-production-baseline.json').read_text())
+baseline={}
+for p in ('scripts/replay-production-baseline-01-07.json','scripts/replay-production-baseline-08-14.json'):
+    baseline.update(json.loads(pathlib.Path(p).read_text()))
 failures=[]
 for i in range(1,15):
     if i==10: continue  # Component stats rows depend on imported data.
@@ -67,7 +69,8 @@ if proc.returncode: failures.append('MIGRATION HISTORY QUERY ERROR: '+proc.stder
 else:
     actual=json.loads(proc.stdout.strip())
     (root/'migration-history.json').write_text(json.dumps(actual,indent=2)+'\n')
-    if actual!=baseline['migrations']:
+    expected_pairs=[{'version':p.name[:14],'name':p.name[15:-4]} for p in sorted(pathlib.Path('supabase/migrations').glob('*.sql'))]
+    if len(expected_pairs)!=48 or actual!=expected_pairs:
         failures.append('MIGRATION VERSION/NAME PAIRS MISMATCH: '+repr(actual))
     else: print(f'MIGRATION HISTORY PASS ({len(actual)} rows)')
 # Dedicated function output with strict proconfig/hash/signature checks.
