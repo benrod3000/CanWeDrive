@@ -31,8 +31,8 @@ def check(label,ok):
 check("case 1 bidirectional",len(by[9101])==2 and [e["direction"] for e in by[9101]]==["forward","backward"])
 check("case 2 forward one-way",len(by[9102])==1 and by[9102][0]["direction"]=="forward")
 check("case 3 reverse one-way",len(by[9103])==1 and by[9103][0]["direction"]=="backward" and by[9103][0]["source_osm_node_id"]=="302")
-check("case 4 access restriction",len(by[9104])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9104]))
-check("case 6 destination access restricted",len(by[9106])==2 and all(e["lsv_status"]=="restricted" for e in by[9106]))
+check("case 4 access=private verified_blocked",len(by[9104])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9104]))
+check("case 6 access=destination restricted",len(by[9106])==2 and all(e["lsv_status"]=="restricted" for e in by[9106]))
 expected_raw={"osm_maxspeed_raw":"25 mph","osm_maxspeed_forward_raw":"30 mph",
  "osm_maxspeed_backward_raw":"20 mph","osm_source_maxspeed_raw":"sign",
  "osm_maxspeed_type_raw":"US:urban","osm_maxspeed_source_raw":"survey"}
@@ -51,6 +51,7 @@ stage=re.search(r"create temp table stage_edges\s*\(.*?\)\s*on commit drop;",loa
 stage_nodes=re.search(r"create temp table stage_nodes\s*\(.*?\)\s*on commit drop;",loader,re.S|re.I)
 insert=re.search(r"insert into public\.road_edges\s*\(.*?\)\s*select\s+.*?\s+from stage_edges s\s+join public\.road_nodes source_node.*?join public\.road_nodes target_node.*?;",loader,re.S|re.I)
 check("real loader stage declarations and insert located",all((stage,stage_nodes,insert)))
+check("loader INSERT has import_run_id binding",":import_run_id" in insert.group())
 stage_cols=[re.match(r"\s*(\w+)",line).group(1) for line in stage.group().split("(",1)[1].rsplit(")",1)[0].split(",\n") if line.strip()]
 check("real loader staging columns equal CSV header",stage_cols==builder_header)
 node_insert=re.search(r"insert into public\.road_nodes\s*\(.*?\)\s*select\s+.*?\s+from stage_nodes;",loader,re.S|re.I)
