@@ -35,34 +35,55 @@ for file in replay-results/baselines/*.sql; do
   psql -v ON_ERROR_STOP=1 -F $'\t' -A -f "$file" > "${file%.sql}.tsv"
 done
 
-# Function signatures, proconfig and hashes must match the live baseline.
+# Assert every baseline row (excluding the data-dependent component-stats count).
+# JSON row objects avoid psql's TSV NULL/array formatting ambiguities.
 python3 - <<'PY'
-import csv,pathlib,sys
-p=pathlib.Path('replay-results/baselines/01.tsv')
-rows=list(csv.DictReader((line for line in p.read_text().splitlines() if line and not line.startswith('(')),delimiter='\t'))
-expected={
-'_pgr_dijkstra':'d2e3be69befb2e7c03372f924e32f55e',
-'_pgr_get_statement':'bc892e85caa1865221ec642c47167681',
-'lsv_pgr_astar':'a2e1bfdc78c75b36fddd9d3f693534d0',
-'lsv_pgr_bdastar':'e44902d5165b98227b0678b098ea4f71',
-'lsv_pgr_dijkstra':'e367e86c06e34374633a029c07a32b0c',
-'road_segments_near_route':'4c3bc6eb25bdb4b37d32841745f19d5b',
-'route_lsv_candidate':'f61f1800f6e05dd3f9e877c43e7450e9',
-'route_lsv_candidate_with_source':'ec9724ec3b7445f92986ea53921b7345'
-}
+import json,pathlib,re,subprocess,sys,difflib
+root=pathlib.Path('replay-results')
+baseline=json.loads(pathlib.Path('scripts/replay-production-baseline.json').read_text())
+failures=[]
+for i in range(1,15):
+    if i==10: continue  # Component stats rows depend on imported data.
+    sql=(root/'baselines'/f'{i:02}.sql').read_text().strip().rstrip(';')
+    query="select coalesce(json_agg(row_to_json(t)), '[]'::json) from ("+sql+") t"
+    proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',query],capture_output=True,text=True)
+    if proc.returncode:
+        failures.append(f'BASELINE {i:02}: SQL ERROR: {proc.stderr}')
+        continue
+    actual=json.loads(proc.stdout.strip())
+    (root/'baselines'/f'{i:02}.json').write_text(json.dumps(actual,indent=2,sort_keys=True)+'\n')
+    expected=baseline[f'{i:02}']
+    # Query ORDER BY defines row order; normalize object-key ordering only.
+    if actual!=expected:
+        lhs=json.dumps(expected,indent=2,sort_keys=True).splitlines()
+        rhs=json.dumps(actual,indent=2,sort_keys=True).splitlines()
+        diff='\n'.join(difflib.unified_diff(lhs,rhs,fromfile='production',tofile='replay',lineterm=''))
+        failures.append(f'BASELINE {i:02} MISMATCH:\n{diff}')
+    else: print(f'BASELINE {i:02} PASS ({len(actual)} rows)')
+# Compare the migration version/name pair set, not just the count.
+sql="select coalesce(json_agg(row_to_json(t)), '[]'::json) from (select version,name from supabase_migrations.schema_migrations order by version) t"
+proc=subprocess.run(['psql','-v','ON_ERROR_STOP=1','-Atc',sql],capture_output=True,text=True)
+if proc.returncode: failures.append('MIGRATION HISTORY QUERY ERROR: '+proc.stderr)
+else:
+    actual=json.loads(proc.stdout.strip())
+    (root/'migration-history.json').write_text(json.dumps(actual,indent=2)+'\n')
+    if actual!=baseline['migrations']:
+        failures.append('MIGRATION VERSION/NAME PAIRS MISMATCH: '+repr(actual))
+    else: print(f'MIGRATION HISTORY PASS ({len(actual)} rows)')
+# Dedicated function output with strict proconfig/hash/signature checks.
+actual=json.loads((root/'baselines'/'01.json').read_text()) if (root/'baselines'/'01.json').exists() else []
+expected=baseline['01']
 report=[]
-for row in rows:
-    name=row['proname']; expected_hash=expected.get(name)
-    if expected_hash:
-        report.append(f"{name}: live={expected_hash} replay={row['definition_md5']} config={row['proconfig']}")
-missing=set(expected)-{r['proname'] for r in rows}
-report.extend(f'MISSING: {x}' for x in sorted(missing))
-pathlib.Path('replay-results/function-comparison.txt').write_text('\n'.join(report)+'\n')
+for i in range(max(len(actual),len(expected))):
+    x=actual[i] if i<len(actual) else None
+    y=expected[i] if i<len(expected) else None
+    report.append(f"{y['proname'] if y else '<unexpected>'}: live={y['definition_md5'] if y else 'missing'} replay={x['definition_md5'] if x else 'missing'} live_config={y['proconfig'] if y else 'missing'} replay_config={x['proconfig'] if x else 'missing'} signature={x['args'] if x else 'missing'}")
+(root/'function-comparison.txt').write_text('\n'.join(report)+'\n')
 print('\n'.join(report))
-if missing: sys.exit('Function baseline missing expected functions')
-# Hash differences are reported, not silently called a pass: PostgreSQL version differences may affect formatting.
-if any(r['definition_md5']!=expected[r['proname']] for r in rows if r['proname'] in expected):
-    pathlib.Path('replay-results/hash-differences.txt').write_text('Hash differences detected: compare normalized definitions manually before approval.\n')
+(root/'parity-differences.txt').write_text('\n\n'.join(failures) if failures else 'All 13 data-independent baseline queries and migration pairs match exactly.\n')
+if failures:
+    print('\n\n'.join(failures),file=sys.stderr)
+    sys.exit(1)
 PY
 
 # Smoke test is isolated and rolled back; never seed the production graph.
@@ -86,10 +107,46 @@ FROM (VALUES
 ) AS e(i,from_osm,to_osm,cost,status,speed)
 JOIN public.road_nodes s ON s.osm_node_id=e.from_osm
 JOIN public.road_nodes t ON t.osm_node_id=e.to_osm;
-SELECT 'allow_unknown=true' as case_name,* FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,true,100);
-SELECT 'allow_unknown=false' as case_name,* FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,false,100);
+-- Assert the same routing behavior as each real API role. Any mismatch raises SQLSTATE P0001.
+SET LOCAL ROLE anon;
+DO $smoke$
+DECLARE statuses text[]; restricted_count integer; blocked_count integer;
+BEGIN
+  SELECT array_agg(edge_status ORDER BY path_seq),
+         count(*) FILTER (WHERE edge_status IN ('restricted','verified_blocked'))
+    INTO statuses,restricted_count
+  FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,true,100);
+  IF statuses IS DISTINCT FROM ARRAY['verified_eligible','unknown']::text[] OR restricted_count <> 0 THEN
+    RAISE EXCEPTION 'anon allow_unknown=true: expected [verified_eligible,unknown], got %, restricted count %',statuses,restricted_count;
+  END IF;
+  SELECT count(*) INTO blocked_count FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,false,100);
+  IF blocked_count <> 0 THEN RAISE EXCEPTION 'anon allow_unknown=false: expected 0 rows, got %',blocked_count; END IF;
+  RAISE NOTICE 'PASS anon true=[verified_eligible,unknown] false=0 restricted=0';
+END
+$smoke$;
+RESET ROLE;
+SET LOCAL ROLE authenticated;
+DO $smoke$
+DECLARE statuses text[]; restricted_count integer; blocked_count integer;
+BEGIN
+  SELECT array_agg(edge_status ORDER BY path_seq),
+         count(*) FILTER (WHERE edge_status IN ('restricted','verified_blocked'))
+    INTO statuses,restricted_count
+  FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,true,100);
+  IF statuses IS DISTINCT FROM ARRAY['verified_eligible','unknown']::text[] OR restricted_count <> 0 THEN
+    RAISE EXCEPTION 'authenticated allow_unknown=true: expected [verified_eligible,unknown], got %, restricted count %',statuses,restricted_count;
+  END IF;
+  SELECT count(*) INTO blocked_count FROM public.route_lsv_candidate(-117.3000,33.0500,-117.2980,33.0500,false,100);
+  IF blocked_count <> 0 THEN RAISE EXCEPTION 'authenticated allow_unknown=false: expected 0 rows, got %',blocked_count; END IF;
+  RAISE NOTICE 'PASS authenticated true=[verified_eligible,unknown] false=0 restricted=0';
+END
+$smoke$;
+RESET ROLE;
 ROLLBACK;
 SQL
-psql -v ON_ERROR_STOP=1 -F $'\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv
+psql -v ON_ERROR_STOP=1 -F 
+cat replay-results/smoke-output.tsv
+grep -q 'PASS anon true=' replay-results/smoke-output.tsv\ngrep -q 'PASS authenticated true=' replay-results/smoke-output.tsv\necho 'PASS: both API roles asserted routing outcomes and restricted-road exclusion.' > replay-results/smoke-review.txt
+\t' -A -f replay-results/smoke.sql > replay-results/smoke-output.tsv 2>&1
 cat replay-results/smoke-output.tsv
 echo 'Smoke executed; review outputs for restricted-road exclusion and unknown-speed behavior.' > replay-results/smoke-review.txt
