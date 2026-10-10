@@ -1,5 +1,14 @@
 # Supabase migration replay verification
 
+## One-time verification result — 2026-10-10
+
+**Verified:** [GitHub Actions run 38089607980](https://github.com/benrod3000/CanWeDrive/actions/runs/38089607980), tested commit `787bc0541e98605feea5c9cf4d2e2bd042ad6279` (`787bc05`). Isolated local PostgreSQL **17.6**, PostGIS **3.3.7**, pgRouting **3.4.1**; pinned Supabase CLI **2.54.11** on Ubuntu **24.04**.
+
+All **48 migration files** replayed and all **48 version/name pairs** matched. The **13 of 13 data-independent production baseline queries passed**, including all eight function hashes and `proconfig` values, with **seven narrowly allowlisted platform-only row differences**: two installed extensions (`pg_graphql`, `pg_net`) and five default-ACL row differences restricted to `realtime` and `supabase_functions`. There were **zero unallowlisted differences**. Both `anon` and `authenticated` routing smoke assertions passed, with the test transaction rolled back.
+
+The exact historical production snapshots and written platform-exception reasons are archived in [`docs/verification-archive/pr-4/`](verification-archive/pr-4/). **These are one-time evidence, not permanent CI expectations.** Permanent CI replays migrations, checks version/name pairs, and tests routing as both API roles; it intentionally does not compare against snapshots that become stale as production evolves.
+
+
 This is a **read-only baseline** captured from the live CanWeDrive project on 2026-10-10. Do not reset, merge, or replay migrations on the production Supabase branch.
 
 ## Required test
