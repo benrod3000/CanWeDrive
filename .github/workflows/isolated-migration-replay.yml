@@ -9,6 +9,7 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/ci-isolated-replay.sh'
       - 'scripts/ci-importer-sample.py'
+      - 'scripts/post-import-components.sql'
       - '.github/workflows/isolated-migration-replay.yml'
 
 permissions:
