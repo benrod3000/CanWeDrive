@@ -24,6 +24,13 @@ cases=[
  feature(9112,[1201,1202,1203],{"highway":"residential","maxspeed":"30","name":"Two segments"}),
  feature(9113,[1301,1302],{"highway":"residential","motorroad":"yes","maxspeed":"25 mph"}),
 ]
+# Fail before writing input if fixtures accidentally reuse an OSM way ID.
+way_ids=[int(x["properties"]["@id"]) for x in cases]
+if len(way_ids)!=len(set(way_ids)):
+    from collections import Counter
+    duplicates=sorted(k for k,v in Counter(way_ids).items() if v>1)
+    raise AssertionError(f"duplicate fixture OSM way IDs: {duplicates}")
+print(f"PASS unique fixture OSM way IDs ({len(way_ids)})",flush=True)
 src=root/"sample.geojsonseq"
 src.write_text("".join(json.dumps(x)+"\n" for x in cases))
 subprocess.run(["node","scripts/build-road-import.mjs",str(src),str(root)],check=True)
