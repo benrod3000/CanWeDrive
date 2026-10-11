@@ -90,6 +90,9 @@ function parseSpeedMph(value) {
   if (!value || typeof value !== "string") return null;
 
   const normalized = value.trim().toLowerCase();
+  // Multiple posted speeds cannot be represented by one unqualified number.
+  // Keep osm_maxspeed_raw, but do not infer eligibility from the first token.
+  if (normalized.includes(";")) return null;
   if (
     normalized === "none" ||
     normalized === "signals" ||
