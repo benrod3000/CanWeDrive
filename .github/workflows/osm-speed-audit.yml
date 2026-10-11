@@ -1,0 +1,48 @@
+name: Geofabrik speed tag audit
+
+on:
+  push:
+    branches: [repair/supabase-migration-history-20261010]
+    paths:
+      - '.github/workflows/osm-speed-audit.yml'
+      - 'scripts/audit-osm-speed-tags.py'
+      - 'scripts/audit-osm-speed-parser.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install read-only OSM parsing dependency
+        run: python3 -m pip install --break-system-packages 'osmium==4.1.1'
+      - name: Download immutable named Geofabrik release asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-all-errors --connect-timeout 30 \
+            -o socal-261008.osm.pbf \
+            https://github.com/benrod3000/CanWeDrive/releases/download/osm-source-2026-10/socal-261008.osm.pbf
+          echo '7b9074063b95f317ca363e4ff5d4922839e210b70e6eb28dc2030164a78ea958  socal-261008.osm.pbf' | sha256sum --check
+      - name: Audit real North County OSM speed tags (no database)
+        run: |
+          python3 scripts/audit-osm-speed-tags.py
+          node scripts/audit-osm-speed-parser.mjs
+          git rev-parse HEAD > speed-audit-results/tested-commit.txt
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: geofabrik-speed-tag-audit
+          path: speed-audit-results/
+          if-no-files-found: warn
+          retention-days: 30
