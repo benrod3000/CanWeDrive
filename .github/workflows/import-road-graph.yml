@@ -1,7 +1,6 @@
 name: Import North County road graph
 
-on:
-  workflow_dispatch:
+on: {}
 
 permissions:
   contents: read
