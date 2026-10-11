@@ -57,7 +57,7 @@ class Audit(osmium.SimpleHandler):
             def speed(v):
                 import re
                 v=v.strip().lower()
-                m=re.fullmatch(r'(\\d+(?:\\.\\d+)?)\\s*(mph)?',v)
+                m=re.fullmatch(r'(\d+(?:\.\d+)?)\s*(mph)?',v)
                 return float(m[1]) if m and m[2] else float(m[1])/1.609344 if m else None
             a,b=speed(way.tags['maxspeed:forward']),speed(way.tags['maxspeed:backward'])
             if a is not None and b is not None and (a <= 35 < b or b <= 35 < a):
