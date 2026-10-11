@@ -104,7 +104,9 @@ sql.write_text(
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
-     OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1))
+     OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
+     OR abs(x2_m-extensions.st_x(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1
+     OR abs(y2_m-extensions.st_y(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203) AND n.lsv_component IS NULL)
  THEN RAISE EXCEPTION 'eligible nodes missing components'; END IF;
