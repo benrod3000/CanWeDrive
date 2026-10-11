@@ -1,5 +1,5 @@
 -- DRAFT / DO NOT RUN. NOT APPROVED FOR PRODUCTION.
--- Inherits TRUNCATE without CASCADE from existing loader; dependent FK audit REQUIRED.
+-- Uses TRUNCATE without CASCADE. Read-only catalog review confirmed no external graph-table dependents; road_edges references road_nodes (ON DELETE CASCADE).
 -- psql input files must exist. One transaction; stop on any SQL error.
 \set ON_ERROR_STOP on
 BEGIN;
