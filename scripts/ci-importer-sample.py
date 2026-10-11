@@ -23,6 +23,7 @@ cases=[
  feature(9111,[1101,1102],{"highway":"footway","maxspeed":"5 mph"}),
  feature(9112,[1201,1202,1203],{"highway":"residential","maxspeed":"30","name":"Two segments"}),
  feature(9113,[1301,1302],{"highway":"residential","motorroad":"yes","maxspeed":"25 mph"}),
+ feature(9114,[1401,1402],{"highway":"residential","maxspeed":"25;45"}),
 ]
 # Fail before writing input if fixtures accidentally reuse an OSM way ID.
 way_ids=[int(x["properties"]["@id"]) for x in cases]
@@ -37,7 +38,7 @@ subprocess.run(["node","scripts/build-road-import.mjs",str(src),str(root)],check
 def rows(p):
     with open(p,newline="") as f: return list(csv.DictReader(f))
 edges=rows(root/"edges.csv"); nodes=rows(root/"nodes.csv")
-by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9114)}
+by={i:[e for e in edges if e["osm_way_id"]==str(i)] for i in range(9101,9115)}
 def check(label,ok):
     print(("PASS " if ok else "FAIL ")+label,flush=True)
     if not ok: raise AssertionError(label)
@@ -53,6 +54,7 @@ check("case 10 roundabout one-way",len(by[9110])==1 and by[9110][0]["direction"]
 check("case 11 excluded footway",len(by[9111])==0)
 check("case 12 multi-segment and km/h",len(by[9112])==4 and sorted({e["osm_segment_index"] for e in by[9112]})==["0","1"] and all(abs(float(e["maxspeed_mph"])-30/1.609344)<0.01 for e in by[9112]))
 check("case 13 motorroad hard blocked",len(by[9113])==2 and all(e["lsv_status"]=="verified_blocked" for e in by[9113]))
+check("case 14 ambiguous multi-value speed is not verified",len(by[9114])==2 and all(e["osm_maxspeed_raw"]=="25;45" and e["maxspeed_mph"]=="" and e["lsv_status"]=="unknown" for e in by[9114]))
 expected_raw={"osm_maxspeed_raw":"25 mph","osm_maxspeed_forward_raw":"30 mph",
  "osm_maxspeed_backward_raw":"20 mph","osm_source_maxspeed_raw":"sign",
  "osm_maxspeed_type_raw":"US:urban","osm_maxspeed_source_raw":"survey"}
@@ -60,7 +62,7 @@ check("case 5 raw speed tags and directional speeds",
  len(by[9105])==2 and all(all(e[k]==v for k,v in expected_raw.items()) for e in by[9105])
  and [round(float(e["maxspeed_mph"])) for e in by[9105]]==[30,20]
  and all(e["speed_source"]=="sign" for e in by[9105]))
-check("CSV quoting, node references and totals",len(edges)==23 and len(nodes)==25
+check("CSV quoting, node references and totals",len(edges)==25 and len(nodes)==27
  and all(e["source_osm_node_id"] in {n["osm_node_id"] for n in nodes} and e["target_osm_node_id"] in {n["osm_node_id"] for n in nodes} for e in edges)
  and any(e["name"]=='A "quoted", road' for e in edges))
 # The real loader's INSERT is executed (never its TRUNCATE) inside a
@@ -91,7 +93,7 @@ sql.write_text(
  +"""DO $assert$
  DECLARE bad int;
  BEGIN
- IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113)<>23
+ IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9114)<>25
  THEN RAISE EXCEPTION 'real loader inserted wrong number of edges'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9105 AND osm_source_maxspeed_raw='sign')<>2
  THEN RAISE EXCEPTION 'raw speed tags lost in real insert'; END IF;
@@ -99,21 +101,21 @@ sql.write_text(
  THEN RAISE EXCEPTION 'private hard-block status lost in real insert'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9106 AND lsv_status='restricted')<>2
  THEN RAISE EXCEPTION 'destination restriction lost in real insert'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9114
    AND (x1_m IS NULL OR y1_m IS NULL OR x2_m IS NULL OR y2_m IS NULL))
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9113
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9114
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(x2_m-extensions.st_x(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1
      OR abs(y2_m-extensions.st_y(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203) AND n.lsv_component IS NULL)
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203,1401,1402) AND n.lsv_component IS NULL)
  THEN RAISE EXCEPTION 'eligible nodes missing components'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602,801,802,1301,1302) AND n.lsv_component IS NOT NULL)
  THEN RAISE EXCEPTION 'blocked/restricted-only nodes assigned components'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges e JOIN public.road_nodes n ON n.id=e.source_node_id
- WHERE e.osm_way_id BETWEEN 9101 AND 9113 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
+ WHERE e.osm_way_id BETWEEN 9101 AND 9114 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
  THEN RAISE EXCEPTION 'edge component differs from source node'; END IF;
  IF (SELECT count(*) FROM public.lsv_component_stats WHERE is_primary)<>1
  THEN RAISE EXCEPTION 'exactly one primary component required'; END IF;
@@ -132,5 +134,5 @@ with open(root/"staging-output.txt","w") as out:
 if result.returncode:
     print((root/"staging-output.txt").read_text()[-5000:])
 check("real loader insert and post-import inside rolled-back CI transaction",result.returncode==0)
-(root/"results.json").write_text(json.dumps({"cases":13,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
+(root/"results.json").write_text(json.dumps({"cases":14,"edges":len(edges),"nodes":len(nodes),"loader_columns":len(stage_cols),"result":"PASS"},indent=2)+"\n")
 print("IMPORTER SAMPLE TEST PASS",flush=True)
