@@ -312,7 +312,7 @@ export async function GET(request: Request) {
   }
 
   const currentLocation =
-    Number.isFinite(lat) && Number.isFinite(lon)
+    params.has("lat") && params.has("lon") && Number.isFinite(lat) && Number.isFinite(lon)
       ? ([lon, lat] as [number, number])
       : null;
 
@@ -342,6 +342,11 @@ export async function GET(request: Request) {
     }
 
     const preferredCity = placeFallback?.city ?? null;
+    // A city named in the query is the search destination. Rank nearby
+    // alternatives from that city, even when the device is somewhere else.
+    const rankingLocation =
+      NORTH_COUNTY_CITY_POINTS.find((city) => city.name === preferredCity)?.coordinates ??
+      currentLocation;
     const deduped = new Map<string, SearchResult>();
     for (const result of rawResults) {
       const formatted = formatResult(result);
@@ -355,7 +360,7 @@ export async function GET(request: Request) {
 
       const scored = {
         ...formatted,
-        score: scoreResult(query, result, currentLocation, preferredCity),
+        score: scoreResult(query, result, rankingLocation, preferredCity),
       };
 
       const existing = deduped.get(key);

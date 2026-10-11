@@ -29,5 +29,8 @@ jobs:
           node --check scripts/build-road-import.mjs
           node --check scripts/audit-overture.cjs
 
+      - name: Test address search
+        run: npm run test:geocode
+
       - name: Build
         run: npm run build
