@@ -228,15 +228,19 @@ BEGIN
  THEN RAISE EXCEPTION 'component stats row mismatch'; END IF;
 END $atomic_assert$;
 -- Completion happens ONLY after the post-import assertions above.
-DO $complete$
-DECLARE affected integer;
-BEGIN
+CREATE TEMP TABLE completion_rowcount (n bigint NOT NULL) ON COMMIT DROP;
+WITH updated AS (
  UPDATE public.import_runs SET status='completed', completed_at=now(),
  record_count=(SELECT count(*) FROM public.road_edges),
  notes='Imported and validated road graph in one transaction.'
- WHERE id=:import_run_id AND status='running';
- GET DIAGNOSTICS affected = ROW_COUNT;
- IF affected <> 1 THEN RAISE EXCEPTION 'expected one completed import, got %',affected; END IF;
+ WHERE id=:import_run_id AND status='running'
+ RETURNING id
+)
+INSERT INTO completion_rowcount(n) SELECT count(*) FROM updated;
+DO $complete$
+BEGIN
+ IF (SELECT n FROM completion_rowcount) <> 1
+ THEN RAISE EXCEPTION 'import_runs completion UPDATE must affect exactly one row'; END IF;
 END $complete$;
 COMMIT;
 ANALYZE public.road_nodes;
