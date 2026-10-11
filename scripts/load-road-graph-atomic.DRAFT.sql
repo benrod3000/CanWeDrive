@@ -1,8 +1,10 @@
 -- DRAFT / DO NOT RUN. NOT APPROVED FOR PRODUCTION.
--- Inherits TRUNCATE ... CASCADE from existing loader; dependent FK audit REQUIRED.
+-- Inherits TRUNCATE without CASCADE from existing loader; dependent FK audit REQUIRED.
 -- psql input files must exist. One transaction; stop on any SQL error.
 \set ON_ERROR_STOP on
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '15min';
 -- Staging and insertion, import_runs initially 'running'.
 insert into public.import_runs (
   source_name,
@@ -19,6 +21,11 @@ insert into public.import_runs (
   'running',
   'North County San Diego road graph import'
 ) returning id as import_run_id \gset
+\if :{?import_run_id}
+\else
+\echo 'Missing import_run_id'
+\quit 1
+\endif
 
 create temp table stage_nodes (
   osm_node_id bigint primary key,
@@ -62,7 +69,7 @@ create temp table stage_edges (
 
 \copy stage_edges from 'data/road-import/edges.csv' with (format csv, header true)
 
-truncate table public.road_edges, public.road_nodes restart identity cascade;
+truncate table public.road_edges, public.road_nodes restart identity;
 
 insert into public.road_nodes (
   osm_node_id,
@@ -106,7 +113,8 @@ insert into public.road_edges (
   osm_source_maxspeed_raw,
   osm_maxspeed_type_raw,
   osm_maxspeed_source_raw,
-  import_run_id
+  import_run_id,
+  x1_m, y1_m, x2_m, y2_m
 )
 select
   s.osm_way_id,
@@ -138,7 +146,11 @@ select
   s.osm_source_maxspeed_raw,
   s.osm_maxspeed_type_raw,
   s.osm_maxspeed_source_raw,
-  :import_run_id
+  :import_run_id,
+  extensions.st_x(extensions.st_transform(extensions.st_startpoint(extensions.st_geomfromtext(s.geom_wkt,4326)),3857)),
+  extensions.st_y(extensions.st_transform(extensions.st_startpoint(extensions.st_geomfromtext(s.geom_wkt,4326)),3857)),
+  extensions.st_x(extensions.st_transform(extensions.st_endpoint(extensions.st_geomfromtext(s.geom_wkt,4326)),3857)),
+  extensions.st_y(extensions.st_transform(extensions.st_endpoint(extensions.st_geomfromtext(s.geom_wkt,4326)),3857))
 from stage_edges s
 join public.road_nodes source_node
   on source_node.osm_node_id = s.source_osm_node_id
@@ -172,12 +184,6 @@ SET lsv_component = n.lsv_component
 FROM public.road_nodes n
 WHERE n.id=e.source_node_id;
 
-UPDATE public.road_edges
-SET x1_m=extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)),
-    y1_m=extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)),
-    x2_m=extensions.st_x(extensions.st_transform(extensions.st_endpoint(geom),3857)),
-    y2_m=extensions.st_y(extensions.st_transform(extensions.st_endpoint(geom),3857));
-
 DELETE FROM public.lsv_component_stats;
 INSERT INTO public.lsv_component_stats(component,node_count,is_primary)
 SELECT lsv_component,count(*)::bigint,
@@ -189,6 +195,10 @@ GROUP BY lsv_component;
 -- Fail the transaction if the derived graph is incomplete.
 DO $atomic_assert$
 BEGIN
+ IF (SELECT count(*) FROM public.road_edges)<>(SELECT count(*) FROM stage_edges)
+ THEN RAISE EXCEPTION 'edge stage count mismatch'; END IF;
+ IF (SELECT count(*) FROM public.road_nodes)<>(SELECT count(*) FROM stage_nodes)
+ THEN RAISE EXCEPTION 'node stage count mismatch'; END IF;
  IF NOT EXISTS (SELECT 1 FROM public.road_edges)
  THEN RAISE EXCEPTION 'empty graph'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges e WHERE e.geom IS NULL
@@ -218,14 +228,16 @@ BEGIN
  THEN RAISE EXCEPTION 'component stats row mismatch'; END IF;
 END $atomic_assert$;
 -- Completion happens ONLY after the post-import assertions above.
-UPDATE public.import_runs SET status='completed', completed_at=now(),
+DO $complete$
+DECLARE affected integer;
+BEGIN
+ UPDATE public.import_runs SET status='completed', completed_at=now(),
  record_count=(SELECT count(*) FROM public.road_edges),
  notes='Imported and validated road graph in one transaction.'
-WHERE id=:import_run_id AND status='running';
--- Assert completion using psql rowcount, not interpolation in a DO block.
-\if :{?import_run_id}
-\else
-\echo 'Missing import_run_id'
-\quit 1
-\endif
+ WHERE id=:import_run_id AND status='running';
+ GET DIAGNOSTICS affected = ROW_COUNT;
+ IF affected <> 1 THEN RAISE EXCEPTION 'expected one completed import, got %',affected; END IF;
+END $complete$;
 COMMIT;
+ANALYZE public.road_nodes;
+ANALYZE public.road_edges;
