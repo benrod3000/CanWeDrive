@@ -1,5 +1,3 @@
--- Expose the persisted speed-source label alongside each routed road edge.
--- This is additive: the original route_lsv_candidate RPC remains available.
 CREATE OR REPLACE FUNCTION public.route_lsv_candidate_with_source(
   start_lon double precision,
   start_lat double precision,

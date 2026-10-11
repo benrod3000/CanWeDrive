@@ -1,0 +1,16 @@
+{
+  "extensions": {
+    "ignore_names": [
+      "pg_graphql",
+      "pg_net"
+    ],
+    "reason": "Supabase local stack installs these optional platform extensions, while production has them available but not installed. None of the 48 application migrations installs either; postgis and pgrouting remain strictly compared."
+  },
+  "default_acls": {
+    "ignore_schemas": [
+      "realtime",
+      "supabase_functions"
+    ],
+    "reason": "Supabase-managed bootstrap/default privileges differ between hosted production and local stack. No application migration changes default privileges or these platform schemas; all other schemas remain strictly compared."
+  }
+}

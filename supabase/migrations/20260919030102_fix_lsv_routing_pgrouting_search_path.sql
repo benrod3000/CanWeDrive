@@ -6,7 +6,7 @@ create or replace function public.route_lsv_candidate(
   allow_unknown boolean default true,
   snap_max_distance_meters double precision default 500
 )
-returns table (
+returns table(
   path_seq integer,
   edge_id bigint,
   edge_name text,
@@ -15,10 +15,10 @@ returns table (
   length_m double precision,
   geom_geojson jsonb
 )
-set search_path = ''
 language plpgsql
 stable
-as $$
+set search_path to 'extensions, public'
+as $function$
 declare
   start_node bigint;
   end_node bigint;
@@ -110,22 +110,4 @@ begin
   where p.edge <> -1
   order by p.path_seq;
 end;
-$$;
-
-revoke all on function public.route_lsv_candidate(
-  double precision,
-  double precision,
-  double precision,
-  double precision,
-  boolean,
-  double precision
-) from public;
-
-grant execute on function public.route_lsv_candidate(
-  double precision,
-  double precision,
-  double precision,
-  double precision,
-  boolean,
-  double precision
-) to anon, authenticated;
+$function$;

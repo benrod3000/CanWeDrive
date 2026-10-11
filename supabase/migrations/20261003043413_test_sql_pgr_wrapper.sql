@@ -1,0 +1,1 @@
+drop function if exists public.test_pgr(text,bigint,bigint); create function public.test_pgr(graph_sql text,start_node bigint,end_node bigint) returns table(path_seq integer,edge bigint) language sql stable as $$ select p.path_seq,p.edge from extensions.pgr_dijkstra($1,$2,$3,true) p $$;

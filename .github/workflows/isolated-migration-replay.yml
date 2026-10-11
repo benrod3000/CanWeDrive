@@ -1,0 +1,89 @@
+name: Isolated migration replay
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/ci-isolated-replay.sh'
+      - 'scripts/ci-importer-sample.py'
+      - 'scripts/post-import-components.sql'
+      - '.github/workflows/isolated-migration-replay.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      SUPABASE_ACCESS_TOKEN: ''
+      SUPABASE_DB_PASSWORD: ''
+      SUPABASE_PROJECT_ID: ''
+      SUPABASE_URL: ''
+      PGHOST: 127.0.0.1
+      PGPORT: '54322'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record tested commit
+        run: |
+          mkdir -p replay-results
+          git rev-parse HEAD | tee replay-results/tested-commit.txt
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.54.11
+      - name: Record pinned Supabase CLI version
+        run: |
+          mkdir -p replay-results
+          supabase --version | tee replay-results/supabase-cli-version.txt
+      - name: Install local PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Start LOCAL Supabase (no link or remote credentials)
+        run: supabase start -x studio,imgproxy,inbucket,analytics,vector,edge-runtime,logflare
+      - name: Configure roles BEFORE reset and migration replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          ALTER ROLE postgres SET search_path TO "$user", public, extensions;
+          ALTER ROLE anon SET statement_timeout TO '3s';
+          ALTER ROLE authenticated SET statement_timeout TO '8s';
+          SQL
+      - name: Replay all migrations in isolated local database
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p replay-results
+          echo "Local Supabase reset output (first failure is retained verbatim)" 
+          set +e
+          supabase db reset --debug > replay-results/reset.log 2>&1
+          status=$?
+          set -e
+          cat replay-results/reset.log
+          if [ "$status" -ne 0 ]; then
+            echo "MIGRATION REPLAY FAILED (exit $status). See reset.log for first failing migration and exact error."
+            exit "$status"
+          fi
+          echo "REPLAY SUCCEEDED"
+      - name: Verify migration history and API-role routing smoke
+        shell: bash
+        run: bash scripts/ci-isolated-replay.sh
+      - name: Importer sample (six cases, real INSERT and post-import assertions)
+        shell: bash
+        run: python3 scripts/ci-importer-sample.py
+      - name: Upload replay evidence (including failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-replay-evidence
+          path: replay-results/
+          if-no-files-found: warn
+          retention-days: 14

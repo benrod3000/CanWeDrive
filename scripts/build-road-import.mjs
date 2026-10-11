@@ -90,6 +90,9 @@ function parseSpeedMph(value) {
   if (!value || typeof value !== "string") return null;
 
   const normalized = value.trim().toLowerCase();
+  // Multiple posted speeds cannot be represented by one unqualified number.
+  // Keep osm_maxspeed_raw, but do not infer eligibility from the first token.
+  if (normalized.includes(";")) return null;
   if (
     normalized === "none" ||
     normalized === "signals" ||
@@ -251,6 +254,7 @@ edgesStream.write([
 
 let wayCount = 0;
 let segmentCount = 0;
+let ambiguousBareSpeedWayCount = 0;
 
 function ensureNode(osmNodeId, coordinate) {
   if (nodeMap.has(osmNodeId)) return;
@@ -306,6 +310,15 @@ async function processLine(line) {
   const rawSourceMaxspeed = rawSpeedTag("source:maxspeed");
   const rawMaxspeedType = rawSpeedTag("maxspeed:type");
   const rawMaxspeedSource = rawSpeedTag("maxspeed:source");
+  // Non-failing warning only: OSM unitless values are km/h, but 36-56
+  // may reflect a US mapper omitting the mph suffix.
+  const bareRisk = [rawMaxspeed, rawMaxspeedForward, rawMaxspeedBackward].some(
+    (raw) => raw !== null && /^(?:3[6-9]|4[0-9]|5[0-6])$/.test(raw.trim()),
+  );
+  if (bareRisk) {
+    ambiguousBareSpeedWayCount += 1;
+    console.warn(`WARNING ambiguous bare maxspeed 36-56 on OSM way ${osmWayId}: general=${rawMaxspeed ?? ''}, forward=${rawMaxspeedForward ?? ''}, backward=${rawMaxspeedBackward ?? ''}; parsed as km/h`);
+  }
   const maxspeed = parseSpeedMph(rawMaxspeed);
   const maxspeedForward = parseSpeedMph(rawMaxspeedForward);
   const maxspeedBackward = parseSpeedMph(rawMaxspeedBackward);
@@ -435,6 +448,7 @@ await Promise.all([
 const metadata = {
   wayCount,
   segmentCount,
+  ambiguousBareSpeedWayCount,
   nodeCount: nodeMap.size,
   highwayCounts: Object.fromEntries(
     [...highwayCounts.entries()].sort((a, b) => a[0].localeCompare(b[0])),
