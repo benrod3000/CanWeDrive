@@ -105,21 +105,21 @@ sql.write_text(
  THEN RAISE EXCEPTION 'private hard-block status lost in real insert'; END IF;
  IF (SELECT count(*) FROM public.road_edges WHERE osm_way_id=9106 AND lsv_status='restricted')<>2
  THEN RAISE EXCEPTION 'destination restriction lost in real insert'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9114
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9116
    AND (x1_m IS NULL OR y1_m IS NULL OR x2_m IS NULL OR y2_m IS NULL))
  THEN RAISE EXCEPTION 'projected endpoints missing'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9114
+ IF EXISTS (SELECT 1 FROM public.road_edges WHERE osm_way_id BETWEEN 9101 AND 9116
    AND (abs(x1_m-extensions.st_x(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(y1_m-extensions.st_y(extensions.st_transform(extensions.st_startpoint(geom),3857)))>0.1
      OR abs(x2_m-extensions.st_x(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1
      OR abs(y2_m-extensions.st_y(extensions.st_transform(extensions.st_endpoint(geom),3857)))>0.1))
  THEN RAISE EXCEPTION 'projected endpoints inconsistent'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203,1401,1402,1501,1502,1601) AND n.lsv_component IS NULL)
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (101,102,201,202,301,302,501,502,701,702,901,902,1001,1002,1201,1202,1203,1401,1402,1501,1502,1601,1602) AND n.lsv_component IS NULL)
  THEN RAISE EXCEPTION 'eligible nodes missing components'; END IF;
- IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602,801,802,1301,1302,1602) AND n.lsv_component IS NOT NULL)
+ IF EXISTS (SELECT 1 FROM public.road_nodes n WHERE n.osm_node_id IN (401,402,601,602,801,802,1301,1302) AND n.lsv_component IS NOT NULL)
  THEN RAISE EXCEPTION 'blocked/restricted-only nodes assigned components'; END IF;
  IF EXISTS (SELECT 1 FROM public.road_edges e JOIN public.road_nodes n ON n.id=e.source_node_id
- WHERE e.osm_way_id BETWEEN 9101 AND 9114 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
+ WHERE e.osm_way_id BETWEEN 9101 AND 9116 AND e.lsv_component IS DISTINCT FROM n.lsv_component)
  THEN RAISE EXCEPTION 'edge component differs from source node'; END IF;
  IF (SELECT count(*) FROM public.lsv_component_stats WHERE is_primary)<>1
  THEN RAISE EXCEPTION 'exactly one primary component required'; END IF;
