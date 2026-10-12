@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MapView from "../components/MapView";
+import { getCurrentLocation } from "../lib/current-location";
 
 type Coordinate = [number, number];
 
@@ -54,7 +55,7 @@ export default function Home() {
   const [searchedTo, setSearchedTo] = useState("");
   const [searchedStops, setSearchedStops] = useState<SelectedPoint[]>([]);
   const [userLocation, setUserLocation] = useState<Coordinate | null>(null);
-  const [locating, setLocating] = useState(false);
+  const [locating, setLocating] = useState(true);
   const [locationMessage, setLocationMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,47 +70,50 @@ export default function Home() {
   } | null>(null);
 
   const activeStop = stopEnabled ? stopPoint : null;
+  const originRevision = useRef(0);
+  const locationRequest = useRef(0);
+  const mapSection = useRef<HTMLElement | null>(null);
 
-  async function useMyLocation() {
-    if (!navigator.geolocation) {
-      setLocationMessage("Location is not available in this browser.");
-      return;
-    }
+  const locate = useCallback(() => {
+    const request = ++locationRequest.current;
+    const revision = originRevision.current;
+    void getCurrentLocation(navigator.geolocation).then((coordinates) => {
+      if (request !== locationRequest.current) return;
+      setUserLocation(coordinates);
+      // A delayed GPS response must not replace an origin the user just entered.
+      if (revision === originRevision.current) {
+        setFromPoint({ coordinates, name: "Your current location" });
+        setFromQuery("Your current location");
+        setPickMode("to");
+        setRoute(null);
+      }
+      setLocationMessage("");
+    }).catch((locationError: unknown) => {
+      if (request !== locationRequest.current) return;
+      setLocationMessage(locationError instanceof Error ? locationError.message : "Location unavailable. Enter an address instead.");
+    }).finally(() => {
+      if (request === locationRequest.current) setLocating(false);
+    });
+  }, []);
+
+  function handleUseLocation() {
     setLocating(true);
     setLocationMessage("");
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const coordinates: Coordinate = [position.coords.longitude, position.coords.latitude];
-        setUserLocation(coordinates);
-        try {
-          const response = await fetch(`/api/geocode?lat=${coordinates[1]}&lon=${coordinates[0]}`);
-          const payload = (await response.json()) as { name?: string };
-          const name = payload.name ?? "Your current location";
-          setFromPoint({ coordinates, name });
-          setFromQuery(name);
-        } catch {
-          setFromPoint({ coordinates, name: "Your current location" });
-          setFromQuery("Your current location");
-        } finally {
-          setPickMode("to");
-          setRoute(null);
-          setLocating(false);
-        }
-      },
-      () => {
-        setLocating(false);
-        setLocationMessage("Location access was unavailable. Enter an address instead.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
-    );
+    void locate();
   }
 
   useEffect(() => {
-    if (!navigator.permissions?.query) return;
-    void navigator.permissions.query({ name: "geolocation" as PermissionName }).then((permission) => {
-      if (permission.state === "granted") void useMyLocation();
-    }).catch(() => {});
-  }, []);
+    void locate();
+    return () => { locationRequest.current += 1; };
+  }, [locate]);
+
+  useEffect(() => {
+    if (!route || !window.matchMedia("(max-width: 760px)").matches) return;
+    mapSection.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    });
+  }, [route]);
 
   async function searchAddress(type: "from" | "to" | "stop") {
     const query = (type === "from" ? fromQuery : type === "to" ? toQuery : stopQuery).trim();
@@ -138,6 +142,7 @@ export default function Home() {
   function selectSearchResult(type: "from" | "to" | "stop", result: { name: string; coordinates: Coordinate }) {
     const point = { coordinates: result.coordinates, name: result.name };
     if (type === "from") {
+      originRevision.current += 1;
       setFromPoint(point);
       setFromQuery(point.name);
       setPickMode("to");
@@ -156,6 +161,7 @@ export default function Home() {
   function handleMapPick(coordinates: Coordinate) {
     const point = { coordinates, name: `${coordinates[1].toFixed(5)}, ${coordinates[0].toFixed(5)}` };
     if (pickMode === "from") {
+      originRevision.current += 1;
       setFromPoint(point);
       setFromQuery(point.name);
       setPickMode("to");
@@ -205,6 +211,7 @@ export default function Home() {
   }
 
   function swapPoints() {
+    originRevision.current += 1;
     const nextFrom = toPoint;
     const nextTo = fromPoint;
     setFromPoint(nextFrom);
@@ -256,7 +263,7 @@ export default function Home() {
                 <div className="address-row">
                   <input
                     value={fromQuery}
-                    onChange={(event) => { setFromQuery(event.target.value); setFromPoint(null); setRoute(null); }}
+                    onChange={(event) => { originRevision.current += 1; setFromQuery(event.target.value); setFromPoint(null); setRoute(null); }}
                     onKeyDown={(event) => { if (event.key === "Enter") void searchAddress("from"); }}
                     placeholder="Starting address"
                     aria-label="Starting address"
@@ -321,7 +328,7 @@ export default function Home() {
             <button type="button" className={pickMode === "from" ? "tool-button active" : "tool-button"} onClick={() => setPickMode("from")}>PICK A</button>
             <button type="button" className={pickMode === "to" ? "tool-button active" : "tool-button"} onClick={() => setPickMode("to")}>PICK B</button>
             <button type="button" className="tool-button" onClick={swapPoints} disabled={!fromPoint || !toPoint}>SWAP</button>
-            <button type="button" className="tool-button location-tool" onClick={() => void useMyLocation()} disabled={locating}>{locating ? "LOCATING…" : "USE MY LOCATION"}</button>
+            <button type="button" className="tool-button location-tool" onClick={handleUseLocation} disabled={locating}>{locating ? "LOCATING…" : "USE MY LOCATION"}</button>
             {!stopEnabled ? (
               <button type="button" className="secondary-action" onClick={() => { setStopEnabled(true); setPickMode("stop"); setRoute(null); }}>+ ADD STOP</button>
             ) : (
@@ -329,7 +336,7 @@ export default function Home() {
             )}
           </div>
 
-          {locationMessage && <p className="location-message">{locationMessage}</p>}
+          {locationMessage && <p className="location-message" role="status">{locationMessage}</p>}
           <p className="map-help">Search an address or click the map to set A and B. Add a stop only when you need one.</p>
 
           <button className="drive-button" onClick={checkRoute} disabled={loading}>
@@ -417,9 +424,9 @@ export default function Home() {
         <footer><span>Can We Cart v0.3</span><span>OSM + POSTGIS + PGROUTING</span></footer>
       </aside>
 
-      <section className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}${!route && pickMode === "stop" ? " pick-stop" : ""}`}>
+      <section ref={mapSection} aria-label="Route map" className={`map-wrap${route ? " has-route" : ""}${!route && pickMode === "to" ? " pick-to" : ""}${!route && pickMode === "stop" ? " pick-stop" : ""}`}>
         <MapView
-          route={route ? { geometry: route.geometry, segments: route.segments, from: { coordinates: fromPoint?.coordinates ?? [0, 0] }, to: { coordinates: toPoint?.coordinates ?? [0, 0] } } : null}
+          route={route}
           selectedFrom={fromPoint?.coordinates ?? null}
           selectedTo={toPoint?.coordinates ?? null}
           selectedStop={activeStop?.coordinates ?? null}

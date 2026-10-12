@@ -32,5 +32,8 @@ jobs:
       - name: Test address search
         run: npm run test:geocode
 
+      - name: Test map and location behavior
+        run: npm run test:map
+
       - name: Build
         run: npm run build
