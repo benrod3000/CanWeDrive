@@ -35,5 +35,8 @@ jobs:
       - name: Test map and location behavior
         run: npm run test:map
 
+      - name: Test route speed evidence
+        run: npm run test:route
+
       - name: Build
         run: npm run build

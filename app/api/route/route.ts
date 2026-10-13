@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPlace } from "@/lib/locations";
 import { getRouteTerrain } from "@/lib/terrain";
+import { roadSpeedStatus, speedCoverage, type RoadSpeedMetadata, type RoadSpeedStatus } from "@/lib/road-speed";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const LSV_MAX_SPEED_MPH = 35;
+const supabaseUrl = "https://bsnspyjsirfayypcvpmc.supabase.co";
+const supabaseKey = "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
 
 type Coordinate = [number, number];
 
@@ -141,9 +144,6 @@ function buildDirections(rows: GraphRouteRow[]): RouteDirection[] {
 }
 
 async function fetchGraphRoute(from: Coordinate, to: Coordinate) {
-  const supabaseUrl = "https://bsnspyjsirfayypcvpmc.supabase.co";
-  const supabaseKey = "sb_publishable_8GiFIyTV438cg8WbL_qV4Q_uj8COv_O";
-
   const response = await fetch(`${supabaseUrl}/rest/v1/rpc/route_lsv_candidate_with_source`, {
     method: "POST",
     headers: {
@@ -166,16 +166,47 @@ async function fetchGraphRoute(from: Coordinate, to: Coordinate) {
   return (await response.json()) as GraphRouteRow[];
 }
 
+async function fetchSpeedMetadata(rows: GraphRouteRow[]) {
+  const ids = [...new Set(rows.filter((row) => row.edge_status === "unknown" && row.maxspeed_mph === null).map((row) => row.edge_id))];
+  const metadata = new Map<number, RoadSpeedMetadata>();
+  const select = "id,highway_type,lsv_status,lsv_reason,maxspeed_mph,maxspeed_conditional,osm_maxspeed_raw,osm_maxspeed_forward_raw,osm_maxspeed_backward_raw";
+  // Bounded URLs and parallel batches; this optional enrichment must fail closed.
+  const batches = [];
+  for (let index = 0; index < ids.length; index += 100) batches.push(ids.slice(index, index + 100));
+  const signal = AbortSignal.timeout(5_000);
+  for (let index = 0; index < batches.length; index += 4) {
+    await Promise.all(batches.slice(index, index + 4).map(async (batch) => {
+      try {
+        const params = new URLSearchParams({ select, id: `in.(${batch.join(",")})` });
+        const response = await fetch(`${supabaseUrl}/rest/v1/road_edges?${params}`, {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+          signal,
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`Road metadata returned ${response.status}`);
+        const records = await response.json() as RoadSpeedMetadata[];
+        for (const record of records) metadata.set(record.id, record);
+      } catch {
+        console.warn("Residential speed metadata unavailable; keeping affected roads unknown.");
+      }
+    }));
+  }
+  return metadata;
+}
+
 async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = true) {
+  const metadata = await fetchSpeedMetadata(rows);
   const routeCoordinates: Coordinate[] = [];
   const segments: Array<{
     coordinates: Coordinate[];
-    status: "eligible" | "blocked" | "unknown";
+    status: RoadSpeedStatus;
     speedMph: number | null;
+    assumedSpeedMph: number | null;
     source: string | null;
   }> = [];
   let distanceMeters = 0;
   let unknownMiles = 0;
+  let assumedMiles = 0;
 
   for (const row of rows) {
     const coordinates = row.geom_geojson?.coordinates ?? [];
@@ -189,14 +220,17 @@ async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = tru
       }
     }
 
-    const status = row.edge_status === "verified_eligible" ? "eligible" : "unknown";
+    const status = roadSpeedStatus(row, metadata.get(row.edge_id));
+    if (status === "blocked") throw new Error("The route contains a restricted or over-35-MPH road. Please choose another route.");
     if (status === "unknown") unknownMiles += row.length_m / 1609.344;
+    if (status === "assumed") assumedMiles += row.length_m / 1609.344;
 
     segments.push({
       coordinates,
       status,
       speedMph: row.maxspeed_mph === null ? null : Math.round(row.maxspeed_mph * 10) / 10,
-      source: row.maxspeed_mph === null ? null : row.speed_source,
+      assumedSpeedMph: status === "assumed" ? 25 : null,
+      source: status === "assumed" ? "california_residential_default" : row.maxspeed_mph === null ? null : row.speed_source,
     });
   }
 
@@ -214,19 +248,17 @@ async function buildGraphRouteResult(rows: GraphRouteRow[], includeTerrain = tru
   );
 
   return {
-    status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
+    ...speedCoverage(distanceMiles, unknownMiles, assumedMiles),
     blockedMiles: 0,
-    unknownMiles,
     alternativesConsidered: 1,
     routerConstraints: {
       excludedClasses: ["motorway", "motorway_link", "motorroad"],
     },
-    distanceMiles: Math.round(distanceMiles * 10) / 10,
+    distanceMiles,
     durationMinutes,
     geometry: { type: "LineString" as const, coordinates: routeCoordinates },
     segments,
     directions: buildDirections(rows),
-    speedDataAvailable: unknownMiles === 0,
     terrain: includeTerrain ? await getRouteTerrain(routeCoordinates) : null,
   };
 }
@@ -248,12 +280,14 @@ async function buildMultiStopRoute(stops: Array<{ name: string; coordinates: Coo
   let distanceMiles = 0;
   let durationMinutes = 0;
   let unknownMiles = 0;
+  let assumedMiles = 0;
 
   for (let index = 0; index < legs.length; index += 1) {
     const leg = legs[index];
     distanceMiles += leg.distanceMiles;
     durationMinutes += leg.durationMinutes ?? 0;
     unknownMiles += leg.unknownMiles;
+    assumedMiles += leg.assumedMiles;
 
     for (const coordinate of leg.geometry.coordinates) {
       const previous = routeCoordinates[routeCoordinates.length - 1];
@@ -268,9 +302,8 @@ async function buildMultiStopRoute(stops: Array<{ name: string; coordinates: Coo
   }
 
   return {
-    status: unknownMiles > 0 ? ("unknown" as const) : ("eligible" as const),
+    ...speedCoverage(distanceMiles, unknownMiles, assumedMiles),
     blockedMiles: 0,
-    unknownMiles,
     alternativesConsidered: 1,
     routerConstraints: { excludedClasses: ["motorway", "motorway_link", "motorroad"] },
     distanceMiles: Math.round(distanceMiles * 10) / 10,
@@ -278,7 +311,6 @@ async function buildMultiStopRoute(stops: Array<{ name: string; coordinates: Coo
     geometry: { type: "LineString" as const, coordinates: routeCoordinates },
     segments,
     directions,
-    speedDataAvailable: unknownMiles === 0,
     terrain: routeCoordinates.length >= 2 ? await getRouteTerrain(routeCoordinates) : null,
   };
 }
