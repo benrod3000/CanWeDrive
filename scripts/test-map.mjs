@@ -85,8 +85,9 @@ test("denied, timed-out, and unsupported location have actionable fallbacks", as
 });
 
 // Render the real page with minimal hook fixtures: no browser/GPS/network needed.
-function pageFixture() {
+function pageFixture(initialRoute = null) {
   const slots = [];
+  slots[4] = initialRoute;
   let cursor = 0;
   let effects = [];
   let gps;
@@ -164,4 +165,25 @@ test("page retains a typed origin when GPS finishes late while still showing the
   assert.deepEqual(plain(map.props.userLocation), user);
   assert.equal(map.props.selectedFrom, null);
   assert.equal(find(updated, (node) => node.props?.["aria-label"] === "Starting address").props.value, "My chosen address");
+});
+
+test("residential assumptions have their own warning, exposure category, and legend", () => {
+  const result = {
+    status: "assumed", distanceMiles: 1, assumedMiles: 1, unknownMiles: 0,
+    mappedSpeedPercent: 0, unknownSpeedPercent: 0, durationMinutes: 3, terrain: null,
+    directions: [], geometry: route.geometry,
+    segments: [{ coordinates: route.geometry.coordinates, status: "assumed", speedMph: null }],
+  };
+  const tree = pageFixture(result).render();
+  const content = (node) => typeof node !== "object" || !node ? String(node ?? "") : [node.props?.children].flat(Infinity).map(content).join(" ");
+  const warning = find(tree, (node) => node.props?.className === "verification-warning residential-warning");
+  assert.match(content(warning), /RESIDENTIAL · ASSUMED 25 MPH/);
+  assert.match(content(warning), /not a verified posted limit/);
+  assert.match(content(tree), /RESIDENTIAL SPEED ASSUMED/);
+  assert.doesNotMatch(content(tree), /% UNKNOWN SPEED DATA/);
+  const legend = find(tree, (node) => node.props?.className === "legend");
+  assert.match(content(legend), /Mapped ≤35.*Assumed 25.*Unknown/);
+  const mixed = pageFixture({ ...result, status: "unknown", unknownMiles: 0.3, unknownSpeedPercent: 30 }).render();
+  assert.match(content(mixed), /30 % UNKNOWN SPEED DATA/);
+  assert.match(content(mixed), /RESIDENTIAL · ASSUMED 25 MPH/);
 });

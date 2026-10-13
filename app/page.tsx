@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MapView from "../components/MapView";
 import { getCurrentLocation } from "../lib/current-location";
+import type { RoadSpeedStatus } from "../lib/road-speed";
 
 type Coordinate = [number, number];
 
@@ -12,14 +13,17 @@ type Direction = { instruction: string; roadName: string; distanceMiles: number 
 
 type RouteResult = {
   route: {
-    status: "eligible" | "blocked" | "unknown";
+    status: RoadSpeedStatus;
     distanceMiles: number;
     unknownMiles: number;
+    assumedMiles: number;
+    mappedSpeedPercent: number;
+    unknownSpeedPercent: number;
     durationMinutes: number | null;
     geometry: { type: "LineString"; coordinates: Coordinate[] };
     segments: Array<{
       coordinates: Coordinate[];
-      status: "eligible" | "blocked" | "unknown";
+      status: RoadSpeedStatus;
       speedMph: number | null;
       source: string | null;
     }>;
@@ -41,6 +45,7 @@ type RouteResult = {
 
 const STATUS_COPY = {
   eligible: { label: "ROUTE FOUND", title: "Mapped road speeds on this route are at or below 35 MPH.", tone: "eligible" },
+  assumed: { label: "RESIDENTIAL SPEED ASSUMED", title: "This route includes residential streets assumed at 25 MPH.", tone: "unknown" },
   unknown: { label: "SPEED DATA INCOMPLETE", title: "A route was found, but some speed-limit data is missing.", tone: "unknown" },
   blocked: { label: "OVER 35 MPH", title: "This route includes a road mapped above 35 MPH.", tone: "blocked" },
 } as const;
@@ -223,9 +228,7 @@ export default function Home() {
   }
 
   const status = route ? STATUS_COPY[route.status] : null;
-  const mappedSpeedPercent = route && route.distanceMiles > 0
-    ? Math.round(((route.distanceMiles - route.unknownMiles) / route.distanceMiles) * 100)
-    : 0;
+  const mappedSpeedPercent = route?.mappedSpeedPercent ?? 0;
 
   const speedExposure = route
     ? route.segments.reduce((total, segment) => {
@@ -239,10 +242,10 @@ export default function Home() {
           const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) ** 2;
           return sum + 3958.7613 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }, 0);
-        const key = segment.speedMph === null ? "unknown" : segment.speedMph <= 25 ? "under25" : segment.speedMph <= 30 ? "at30" : "at35";
+        const key = segment.status === "assumed" ? "assumed" : segment.status === "unknown" || segment.speedMph === null ? "unknown" : segment.speedMph <= 25 ? "under25" : segment.speedMph <= 30 ? "at30" : "at35";
         total[key] += miles;
         return total;
-      }, { under25: 0, at30: 0, at35: 0, unknown: 0 })
+      }, { under25: 0, at30: 0, at35: 0, assumed: 0, unknown: 0 })
     : null;
 
   return (
@@ -363,8 +366,15 @@ export default function Home() {
 
             {route.status === "unknown" && (
               <div className="verification-warning">
-                <strong>{100 - mappedSpeedPercent}% UNKNOWN SPEED DATA</strong>
+                <strong>{route.unknownSpeedPercent}% UNKNOWN SPEED DATA</strong>
                 <span>{route.unknownMiles.toFixed(1)} miles have no usable posted-speed data.</span>
+              </div>
+            )}
+
+            {route.assumedMiles > 0 && (
+              <div className="verification-warning residential-warning">
+                <strong>RESIDENTIAL · ASSUMED 25 MPH</strong>
+                <span>{route.assumedMiles.toFixed(1)} miles are classified as residential with no usable speed tag. The 25 MPH default is an assumption, not a verified posted limit. Check signs; a higher posted limit overrides it.</span>
               </div>
             )}
 
@@ -405,6 +415,7 @@ export default function Home() {
                     <div><span>≤25 MPH</span><strong>{speedExposure.under25.toFixed(1)} mi</strong></div>
                     <div><span>26–30 MPH</span><strong>{speedExposure.at30.toFixed(1)} mi</strong></div>
                     <div><span>31–35 MPH</span><strong>{speedExposure.at35.toFixed(1)} mi</strong></div>
+                    <div><span>RESIDENTIAL · ASSUMED 25</span><strong>{speedExposure.assumed.toFixed(1)} mi</strong></div>
                     <div><span>UNKNOWN</span><strong>{speedExposure.unknown.toFixed(1)} mi</strong></div>
                   </div>
                 )}
@@ -415,7 +426,7 @@ export default function Home() {
                   <div><span>TO</span><strong>{searchedTo}</strong></div>
                 </div>
 
-                <p className="data-note">Estimated using mapped speed data. The mapped-data percentage is not a field verification of road signs. Streets without usable speed data are estimated at 25 MPH. Freeways are excluded from LSV route planning. Local signs and restrictions can override map data.</p>
+                <p className="data-note">Mapped-data coverage excludes assumed residential speeds and is not a field verification of road signs. California’s residential default is 25 MPH unless otherwise posted; a missing map tag does not prove there is no sign. Other unknown speeds use 25 MPH for travel-time estimates only. Freeways are excluded. Local signs and restrictions override map data.</p>
               </div>
             </details>
           </section>
@@ -435,7 +446,8 @@ export default function Home() {
           onMapPick={handleMapPick}
         />
         <div className="legend">
-          <span><i className="ok" /> ≤35 MPH</span>
+          <span><i className="ok" /> Mapped ≤35</span>
+          <span><i className="assumed" /> Assumed 25</span>
           <span><i className="unknown" /> Unknown</span>
           <span><i className="blocked" /> &gt;35 MPH</span>
         </div>

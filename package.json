@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:geocode": "node --test scripts/test-geocode.mjs",
     "test:map": "node --test scripts/test-map.mjs",
+    "test:route": "node --test scripts/test-route.mjs",
     "audit:overture": "node scripts/audit-overture.cjs"
   },
   "dependencies": {

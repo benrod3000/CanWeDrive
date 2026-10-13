@@ -3,10 +3,11 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import { createMapCamera, routeCoordinates, type Coordinate } from "../lib/map-camera";
+import type { RoadSpeedStatus } from "../lib/road-speed";
 
 type RouteData = {
   geometry: { type: "LineString"; coordinates: Coordinate[] };
-  segments: Array<{ coordinates: Coordinate[]; status: "eligible" | "blocked" | "unknown" }>;
+  segments: Array<{ coordinates: Coordinate[]; status: RoadSpeedStatus }>;
 };
 
 type MapViewProps = {
@@ -19,7 +20,7 @@ type MapViewProps = {
   onMapPick: (coordinates: Coordinate) => void;
 };
 
-const ROUTE_COLORS = { eligible: "#ff3b30", unknown: "#00a6ff", blocked: "#111111" };
+const ROUTE_COLORS = { eligible: "#ff3b30", assumed: "#d58b00", unknown: "#00a6ff", blocked: "#111111" };
 const animationDuration = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 700;
 
 function fitCoordinates(map: maplibregl.Map, coordinates: Coordinate[], duration = animationDuration()) {
@@ -98,6 +99,7 @@ export default function MapView({ route, selectedFrom, selectedTo, selectedStop,
       map.addSource("route-points", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "route-casing", type: "line", source: "route", paint: { "line-color": "#111111", "line-width": 11, "line-opacity": 0.55 } });
       map.addLayer({ id: "route-eligible", type: "line", source: "route", filter: ["==", ["get", "status"], "eligible"], paint: { "line-color": ROUTE_COLORS.eligible, "line-width": 6.5, "line-opacity": 0.98 } });
+      map.addLayer({ id: "route-assumed", type: "line", source: "route", filter: ["==", ["get", "status"], "assumed"], paint: { "line-color": ROUTE_COLORS.assumed, "line-width": 6.5, "line-opacity": 0.98, "line-dasharray": [0.5, 0.5] } });
       map.addLayer({ id: "route-unknown", type: "line", source: "route", filter: ["==", ["get", "status"], "unknown"], paint: { "line-color": ROUTE_COLORS.unknown, "line-width": 6, "line-opacity": 0.98, "line-dasharray": [1.5, 1] } });
       map.addLayer({ id: "route-blocked", type: "line", source: "route", filter: ["==", ["get", "status"], "blocked"], paint: { "line-color": ROUTE_COLORS.blocked, "line-width": 7, "line-opacity": 0.98 } });
       map.addLayer({ id: "route-start-end", type: "circle", source: "route-points", paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-color": "#111111", "circle-stroke-width": 3 } });
